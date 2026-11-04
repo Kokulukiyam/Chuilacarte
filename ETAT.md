@@ -20,6 +20,11 @@ Branche : `claude/chuilacarte`. Avancement global : ~90 %. Dépôt distant : htt
 - PDF : polices en Identity-H (avertissement poppler sans conséquence).
 - Import d'un GeoPackage exporté : les tables séparées par type de géométrie reviennent en plusieurs couches.
 
+## Session locale (04/11/2026, Mac)
+- Build de production réparé en local : configuration ESLint d'un dossier parent ignorée, racine du projet fixée, `scripts/test-server.sh` compatible macOS (`lsof`).
+- Playwright 1.64.1 ajouté en devDependency (script de bout en bout : `tests/e2e/bout-en-bout.ts`).
+- Relancés : l'agent de bout en bout (serveur 3500) et l'agent cartographique, 2e passage (serveur 3600, sites `exemple-medina|yoff|fatick`).
+
 ## Tests manuels rapides
 `scripts/test-server.sh 3400` puis ouvrir http://localhost:3400. Sites de test présents en local (non versionnés) : controle-*, test-donnees-*, ui-collecte.
 
