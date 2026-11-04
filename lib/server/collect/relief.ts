@@ -3,6 +3,7 @@ import { contours as d3contours } from 'd3-contour';
 import type { Position } from 'geojson';
 import { readWindow, type Grid } from '../raster';
 import { fc, src, type Collector } from './types';
+import { fmtNum } from '../../proj';
 
 export const COP_ATTR =
   'Relief : Copernicus WorldDEM-30 © DLR e.V. 2010-2014 et © Airbus Defence and Space GmbH 2014-2018, fourni dans le cadre de COPERNICUS par l’Union européenne et l’ESA';
@@ -141,7 +142,7 @@ export const reliefCollector: Collector = {
           visible: true,
         },
       ],
-      notes: [`Altitude : min ${st.min.toFixed(1)} m, max ${st.max.toFixed(1)} m, moyenne ${st.mean.toFixed(1)} m (modèle de surface : inclut bâti et végétation)`],
+      notes: [`Altitude : min ${fmtNum(st.min, 1)} m, max ${fmtNum(st.max, 1)} m, moyenne ${fmtNum(st.mean, 1)} m (modèle de surface : inclut bâti et végétation)`],
     };
   },
 };

@@ -10,6 +10,7 @@ import { applyScale, newLayout, pageSize, relayout } from '@/lib/layout/defaults
 import { fitScale, makeProjector, SCALES } from '@/lib/layout/geo';
 import { renderLayoutSvg, FONT_STACKS, defaultSymbolScale } from '@/lib/layout/svg';
 import { renderBasemap, type BasemapRender } from '@/lib/layout/basemap';
+import { fmtNum } from '@/lib/proj';
 import { exportLayout, fetchInset } from '@/lib/layout/export';
 import { flushNow } from '@/lib/autosave';
 import type { Layout, LayoutElement } from '@/lib/types';
@@ -211,7 +212,7 @@ export default function LayoutEditor() {
     try {
       await flushNow();
       const r = await exportLayout(kind, layout, site, useStore.getState().data, { onProgress: (m) => setBusy(`${kind}:${m}`) });
-      useStore.getState().toast(`Export ${kind.toUpperCase()} : ${r.name} (${(r.size / 1e6).toFixed(1)} Mo)${r.note ? ` — ${r.note}` : ''}${r.legendOverflow ? ' — attention : légende incomplète' : ''}`, 'ok');
+      useStore.getState().toast(`Export ${kind.toUpperCase()} : ${r.name} (${fmtNum(r.size / 1e6, 1)} Mo)${r.note ? ` — ${r.note}` : ''}${r.legendOverflow ? ' — attention : légende incomplète' : ''}`, 'ok');
     } catch (e: any) {
       console.error(e);
       useStore.getState().toast(`Échec de l’export ${kind.toUpperCase()} : ${e.message}`, 'error');
@@ -338,7 +339,7 @@ export default function LayoutEditor() {
             </label>
           </div>
           <label className="block text-[12px]">
-            Épaisseurs et symboles : ×{(layout.symbolScale ?? defaultSymbolScale(layout)).toFixed(2)}
+            Épaisseurs et symboles : ×{fmtNum(layout.symbolScale ?? defaultSymbolScale(layout), 2)}
             <input type="range" min={0.5} max={3} step={0.05} value={layout.symbolScale ?? defaultSymbolScale(layout)} onChange={(e) => set((l) => (l.symbolScale = Number(e.target.value)))} className="w-full" data-testid="layout-symbolscale" />
           </label>
           <div className="grid grid-cols-2 gap-2">

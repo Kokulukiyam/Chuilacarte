@@ -163,7 +163,7 @@ registerTool('isochrone', {
         pointSize: 9,
         pointShape: 'star',
       });
-      addAnalysisLayer(`Isochrones ${MODE_FR[a.isoMode]} (${vals.join(', ')} min)`, fc, {
+      addAnalysisLayer(`Isochrones ${MODE_FR[a.isoMode]} (${[...vals].sort((x, y) => x - y).join(', ')} min)`, fc, {
         geom: 'mixed',
         style,
         source: { name: `Isochrones — ${j.provider}`, license: 'ODbL (données OSM)', attribution: j.attribution, collectedAt: new Date().toISOString() },

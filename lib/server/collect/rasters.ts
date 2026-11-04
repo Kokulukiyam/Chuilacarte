@@ -6,6 +6,7 @@ import { fetchWithTimeout } from '../http';
 import { siteFile, writeAtomic } from '../storage';
 import { countryIso3 } from './openbuildings';
 import { fc, src, type Collector } from './types';
+import { fmtNum } from '../../proj';
 
 // ---------------------------------------------------------------- WorldPop
 export const worldpopCollector: Collector = {
@@ -158,7 +159,7 @@ export const waterCollector: Collector = {
         seen++;
         if (v >= 50) wet++;
       }
-      note = `Eau de surface (présente plus de la moitié du temps) : ${((wet / Math.max(1, seen)) * 100).toFixed(1)} % de l’emprise`;
+      note = `Eau de surface (présente plus de la moitié du temps) : ${fmtNum((wet / Math.max(1, seen)) * 100, 1)} % de l’emprise`;
     } catch (e: any) {
       note = `Statistiques GSW non calculées : ${e.message}`;
     }

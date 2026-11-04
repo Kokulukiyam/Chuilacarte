@@ -1,5 +1,22 @@
 # Contrôle de bout en bout (Playwright)
 
+## Passage après corrections (04/11/2026)
+
+Le script de l'agent (`tests/e2e/bout-en-bout.ts`) a été relancé tel quel sur un build reconstruit (`scripts/test-server.sh 3500`) après les corrections. Résultat : **39 étapes sur 39 OK**, **0 erreur** dans la console du navigateur et dans le terminal du serveur. La seule erreur relevée est attendue : HTTP 400 d'un test négatif, le DXF local refusé par « Importer ». Les données de test ont été supprimées.
+
+| Défaut | Correction | Vérification |
+|---|---|---|
+| D1 Maj + clic ne sélectionne pas | Zoom par boîte de MapLibre désactivé (`boxZoom: false`, `lib/mapbase.ts`) | Étape 3.6 : « Maj + clic : 2 objet(s) sélectionné(s) », fusion 2 → 1 |
+| D2 Choix d'un projet → onglet Couche | `selectLayer(id, { keepTab: true })` depuis le panneau Projet | Étape 7.7 : onglet actif « projet » |
+| D3 Profil hors ligne : HTTP 500 | Erreurs réseau → HTTP 503 « Service distant injoignable : vérifiez la connexion internet », une ligne sans trace dans le terminal (`jsonError`) ; message des isochrones corrigé | Revue du code (coupure réseau non reproduite) |
+| D4 Nom du tampon non mis à jour | Nom et libellé de légende mis à jour dans la même modification | — |
+| D5 Point décimal | `fmtNum` (fr-FR) : profil, ombres, calage, notes de collecte, taille des exports | Étape 7.6 : « hauteur 33,3° … 15,2 m » |
+| D6 Avertissement « found null » | Styles OpenFreeMap nettoyés : cartouches de routes retirés, comparaisons numériques protégées par `to-number` (`sanitizeStyle`) | 0 occurrence sur le parcours |
+| D7 Ordre « (10, 5 min) » | Minutes triées | Couche « Isochrones à pied (5, 10 min) » |
+
+Non corrigé (mineur, assumé) : l'export GeoJSON produit un fichier par type de géométrie pour les couches mixtes (22 fichiers pour 15 couches), afin que chaque fichier reste homogène pour QGIS et les logiciels de DAO.
+
+
 Date : 4 novembre 2026. Build de production servi sur http://localhost:3500 (`scripts/test-server.sh 3500`), Chromium 1248 sans interface, fenêtre de 1680 × 1050, macOS.
 
 Script : `tests/e2e/bout-en-bout.ts`, lancé avec `npx tsx tests/e2e/bout-en-bout.ts [url]`. Il passe par l'interface : clics sur la carte et les panneaux, raccourcis clavier, glisser-déposer, boîtes `prompt` et `confirm`, téléchargements. `window.__store` et `window.__map` servent à vérifier les états et à cadrer la vue (`jumpTo`). Ils remplacent l'interface une seule fois, voir 3.6.

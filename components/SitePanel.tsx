@@ -40,6 +40,12 @@ export default function SitePanel() {
               const v = Math.max(0, Math.min(20000, Math.round(Number(buf) || 0)));
               useStore.getState().commit((d) => {
                 d.site.buffer = v;
+                // même nommage que le serveur, visible tout de suite
+                const tl = d.site.layers.find((l) => l.id === 'tampon');
+                if (tl) {
+                  tl.name = `Zone tampon (${v} m)`;
+                  tl.legendLabel = `Zone tampon de ${v} m`;
+                }
               });
               // le serveur régénère la zone tampon ; on recharge la géométrie
               setTimeout(async () => {

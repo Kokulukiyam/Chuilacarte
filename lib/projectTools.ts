@@ -9,7 +9,7 @@ import { makeLayer, userSource } from './site';
 import { insertIndex } from './layerops';
 import { applyPlacement, helmert, imageCorners, placeLocal, prepareLocalPlan, unplaceLocal } from './placement';
 import { useOverlay } from './overlays';
-import { fromUtm, metricArea, toUtm } from './proj';
+import { fmtNum, fromUtm, metricArea, toUtm } from './proj';
 import { baseStyle, presetById, cloneStyle } from './styles';
 import { heightOf, shadowsFor, sunAt } from './shadows';
 import type { FC, Layer, Placement } from './types';
@@ -258,7 +258,7 @@ export function computeShadows() {
     if (l.role === 'project') src.push({ fc: { ...st.data[l.id], features: st.data[l.id].features.filter((f) => !/parcel/i.test(String(f.properties?.calque || ''))) }, height: (p) => Number(p?.hauteur) || (l.project?.levels ?? 3) * (l.project?.levelHeight ?? 3) });
   }
   const fc = sun.altitude > 0.5 ? shadowsFor(site.utm, src, sun, bb) : { type: 'FeatureCollection' as const, features: [] };
-  const info = sun.altitude <= 0.5 ? `Soleil sous l’horizon (${sun.altitude.toFixed(1)}°) : pas d’ombre.` : `Soleil : hauteur ${sun.altitude.toFixed(1)}°, azimut ${sun.azimuth.toFixed(0)}° — une hauteur de 10 m projette ${(10 * sun.shadowFactor).toFixed(1)} m d’ombre.`;
+  const info = sun.altitude <= 0.5 ? `Soleil sous l’horizon (${fmtNum(sun.altitude, 1)}°) : pas d’ombre.` : `Soleil : hauteur ${fmtNum(sun.altitude, 1)}°, azimut ${fmtNum(sun.azimuth)}° — une hauteur de 10 m projette ${fmtNum(10 * sun.shadowFactor, 1)} m d’ombre.`;
   sh.set({ info });
   // couche « Ombres portées » mise à jour sans historique
   let l = site.layers.find((x) => x.role === 'shadow');

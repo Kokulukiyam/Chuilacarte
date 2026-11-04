@@ -61,7 +61,7 @@ interface State {
   // actions
   init(site: Site, data: Record<string, FC>): void;
   setTool(t: Tool): void;
-  selectLayer(id: string | null): void;
+  selectLayer(id: string | null, opts?: { keepTab?: boolean }): void;
   select(s: Selection | null): void;
   /** modification annulable */
   commit(fn: (draft: { site: Site; data: Record<string, FC> }) => void | { touched?: string[] }, opts?: { touched?: string[] }): void;
@@ -125,8 +125,8 @@ export const useStore = create<State>((set, get) => ({
     // la cible de dessin ne vaut que pour l'outil de dessin en cours
     set({ tool: t, drawTarget: t === 'draw-point' || t === 'draw-line' || t === 'draw-polygon' ? get().drawTarget : null });
   },
-  selectLayer(id) {
-    set({ selectedLayerId: id, rightTab: id ? 'couche' : get().rightTab });
+  selectLayer(id, opts) {
+    set({ selectedLayerId: id, rightTab: id && !opts?.keepTab ? 'couche' : get().rightTab });
   },
   select(s) {
     set({ selection: s, selectedLayerId: s ? s.layerId : get().selectedLayerId });

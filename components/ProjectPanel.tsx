@@ -94,7 +94,7 @@ export default function ProjectPanel() {
           }}
         />
         {projects.length > 0 && (
-          <select className="input" value={current?.id} onChange={(e) => useStore.getState().selectLayer(e.target.value)} data-testid="project-select">
+          <select className="input" value={current?.id} onChange={(e) => useStore.getState().selectLayer(e.target.value, { keepTab: true })} data-testid="project-select">
             {projects.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
@@ -205,7 +205,7 @@ function CalageSection({ layer }: { layer: Layer }) {
         </button>
       </div>
       <label className="block text-[12px]">
-        Rotation : {p.rotation.toFixed(1)}°
+        Rotation : {fmtNum(p.rotation, 1)}°
         <input type="range" min={-180} max={180} step={0.5} value={p.rotation} onChange={(e) => set((x) => (x.rotation = Number(e.target.value)), false)} onPointerUp={() => set(() => {})} className="w-full" data-testid="calage-rotation" />
       </label>
       <div className="grid grid-cols-2 gap-2">
@@ -260,7 +260,7 @@ function CalageSection({ layer }: { layer: Layer }) {
                 onClick={() => {
                   try {
                     const h = applyCalage();
-                    useStore.getState().toast(`Calage appliqué : rotation ${h.rotation.toFixed(2)}°, échelle ${h.scale.toPrecision(5)}${cal.pairs.length > 2 ? `, écart moyen ${h.rms.toFixed(2)} m` : ''}`, 'ok');
+                    useStore.getState().toast(`Calage appliqué : rotation ${fmtNum(h.rotation, 2)}°, échelle ${fmtNum(h.scale, 5)}${cal.pairs.length > 2 ? `, écart moyen ${fmtNum(h.rms, 2)} m` : ''}`, 'ok');
                   } catch (e: any) {
                     useStore.getState().toast(e.message, 'error');
                   }

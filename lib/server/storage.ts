@@ -148,7 +148,18 @@ export async function copyDir(src: string, dst: string) {
   await fs.cp(src, dst, { recursive: true });
 }
 
+/** Erreur d'accès réseau à un service distant (hors ligne, DNS, délai dépassé). */
+export function isNetworkError(e: any): boolean {
+  const codes = /ECONNREFUSED|ECONNRESET|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ENETUNREACH|UND_ERR_CONNECT_TIMEOUT|UND_ERR_SOCKET|UND_ERR_HEADERS_TIMEOUT/;
+  return !!e && (e.name === 'AbortError' || e.name === 'TimeoutError' || (e instanceof TypeError && /fetch failed/i.test(e.message)) || codes.test(String(e.code || e.cause?.code || '')));
+}
+
 export function jsonError(e: any) {
+  if (!(e instanceof HttpError) && isNetworkError(e)) {
+    // pas une panne de l'application : message clair, une ligne dans le terminal, pas de trace
+    console.warn('[chuilacarte] service distant injoignable :', e.cause?.code || e.code || e.message);
+    return Response.json({ error: 'Service distant injoignable : vérifiez la connexion internet puis réessayez.' }, { status: 503 });
+  }
   const status = e instanceof HttpError ? e.status : 500;
   const msg = e instanceof HttpError ? e.message : `Erreur interne : ${e?.message || e}`;
   if (status >= 500) console.error('[chuilacarte]', e);

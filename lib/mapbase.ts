@@ -20,6 +20,21 @@ export function getDemSource() {
 }
 
 const styleCache = new Map<string, Promise<StyleSpecification>>();
+/**
+ * Nettoie les styles OpenFreeMap : retire les cartouches de routes (codes US, sans objet au Sénégal) et
+ * rend sûres les comparaisons numériques sur des attributs parfois absents (`rank`, `admin_level`…),
+ * qui produisent sinon l'avertissement « Expected value to be of type number, but found null ».
+ */
+export function sanitizeStyle(style: StyleSpecification): StyleSpecification {
+  const fix = (e: any): any => {
+    if (!Array.isArray(e)) return e;
+    if (['<', '<=', '>', '>='].includes(e[0]) && e.length >= 3) return [e[0], ...e.slice(1).map((a: any) => (Array.isArray(a) && a[0] === 'get' ? ['to-number', a, -1e9] : fix(a)))];
+    return e.map(fix);
+  };
+  style.layers = style.layers.filter((l) => !/shield/i.test(l.id)).map((l: any) => (l.filter ? { ...l, filter: fix(l.filter) } : l));
+  return style;
+}
+
 async function fetchStyle(url: string): Promise<StyleSpecification> {
   let p = styleCache.get(url);
   if (!p) {
@@ -28,6 +43,7 @@ async function fetchStyle(url: string): Promise<StyleSpecification> {
         if (!r.ok) throw new Error(`style ${r.status}`);
         return r.json();
       })
+      .then(sanitizeStyle)
       .catch((e) => {
         styleCache.delete(url);
         throw e;
@@ -171,6 +187,8 @@ export function createMap(container: HTMLElement, opts: Partial<maplibregl.MapOp
     attributionControl: { compact: false },
     canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true },
     maxPitch: 75,
+    // Maj + clic sert à la sélection multiple (fusion) : pas de zoom par boîte
+    boxZoom: false,
     ...opts,
   } as any);
 }

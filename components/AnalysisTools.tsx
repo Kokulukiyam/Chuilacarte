@@ -6,7 +6,7 @@ import { synthesis, synthesisCsv, synthesisRows, densityGrid, type Synthesis } f
 import { useAnalysis, listZones, bufferFeatures, addAnalysisLayer, gradStyleFor } from '@/lib/analysisTools';
 import { useConfig } from '@/lib/config';
 import { download } from '@/lib/layout/export';
-import { fmtLength } from '@/lib/proj';
+import { fmtLength, fmtNum } from '@/lib/proj';
 import { bufferedEmprise } from '@/lib/site';
 import { baseStyle } from '@/lib/styles';
 
@@ -253,7 +253,7 @@ function ProfileChart({ p }: { p: NonNullable<ReturnType<typeof useAnalysis.getS
         ))}
       </svg>
       <div className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-400">
-        Longueur {fmtLength(p.length)} · altitude {p.min.toFixed(1)} à {p.max.toFixed(1)} m · dénivelé +{p.up.toFixed(1)} / −{p.down.toFixed(1)} m
+        Longueur {fmtLength(p.length)} · altitude {fmtNum(p.min, 1)} à {fmtNum(p.max, 1)} m · dénivelé +{fmtNum(p.up, 1)} / −{fmtNum(p.down, 1)} m
       </div>
       <div className="text-[10px] text-zinc-500">{p.note}</div>
       <button className="btn-ghost mt-1" onClick={csv}>

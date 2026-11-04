@@ -38,7 +38,7 @@ export const POST = handle(async (req: Request) => {
   try {
     r = await fetchWithTimeout(`${base}/isochrone?json=${encodeURIComponent(JSON.stringify(q))}`, { timeout: 30000 });
   } catch (e: any) {
-    throw new HttpError(503, `Service d’isochrones indisponible (${e.message}). Renseignez ORS_API_KEY dans .env.local pour utiliser OpenRouteService.`);
+    throw new HttpError(503, `Service d’isochrones Valhalla injoignable (${e.cause?.code || e.message}) : vérifiez la connexion internet. Si le service public reste indisponible, OpenRouteService peut prendre le relais avec ORS_API_KEY dans .env.local.`);
   }
   if (!r.ok) throw new HttpError(502, `Valhalla : HTTP ${r.status} ${(await r.text()).slice(0, 200)}`);
   const j = await r.json();
