@@ -77,6 +77,17 @@ interface State {
 
 const MAX_HISTORY = 60;
 
+/** Garde la sélection après annuler/rétablir si l'objet existe encore. */
+function keepSel(sel: Selection | null, data: Record<string, FC>): Selection | null {
+  if (!sel) return null;
+  const fc = data[sel.layerId];
+  if (!fc) return null;
+  const ids = new Set(fc.features.map((f) => f.properties?._fid));
+  const fids = (sel.fids || [sel.fid]).filter((x) => ids.has(x));
+  if (!fids.length) return null;
+  return { layerId: sel.layerId, fid: ids.has(sel.fid) ? sel.fid : fids[0], fids: sel.fids ? fids : undefined };
+}
+
 /** Garantit un identifiant stable _fid sur chaque objet. */
 export function ensureFids(fc: FC): FC {
   let changed = false;
@@ -158,7 +169,7 @@ export const useStore = create<State>((set, get) => ({
     const prev = past[past.length - 1];
     const dl = { ...get().dirtyLayers };
     for (const k of new Set([...Object.keys(data), ...Object.keys(prev.data)])) if (data[k] !== prev.data[k]) dl[k] = true;
-    set({ site: prev.site, data: prev.data, past: past.slice(0, -1), future: [{ site, data }, ...future], dirtySite: true, dirtyLayers: dl, selection: null });
+    set({ site: prev.site, data: prev.data, past: past.slice(0, -1), future: [{ site, data }, ...future], dirtySite: true, dirtyLayers: dl, selection: keepSel(get().selection, prev.data) });
   },
   redo() {
     const { past, site, data, future } = get();
@@ -166,7 +177,7 @@ export const useStore = create<State>((set, get) => ({
     const next = future[0];
     const dl = { ...get().dirtyLayers };
     for (const k of new Set([...Object.keys(data), ...Object.keys(next.data)])) if (data[k] !== next.data[k]) dl[k] = true;
-    set({ site: next.site, data: next.data, future: future.slice(1), past: [...past, { site, data }], dirtySite: true, dirtyLayers: dl, selection: null });
+    set({ site: next.site, data: next.data, future: future.slice(1), past: [...past, { site, data }], dirtySite: true, dirtyLayers: dl, selection: keepSel(get().selection, next.data) });
   },
   markSaved(ok, err) {
     set({ saving: ok ? 'saved' : 'error', saveError: err });
