@@ -19,6 +19,9 @@ export interface ImportedLayer {
   fc: FC;
   geom: GeomKind;
   warning?: string;
+  /** DXF en coordonnées locales (non géoréférencé) : à caler */
+  local?: boolean;
+  units?: string;
 }
 
 function cleanFc(fc: FC): FC {
@@ -157,7 +160,7 @@ async function fromGpkg(buf: Buffer, name: string): Promise<ImportedLayer[]> {
             return { type: 'Feature', geometry: JSON.parse(__g), properties: props };
           }),
       };
-      out.push(...splitByGeom(fc, layers.length > 1 ? l.name : name));
+      out.push(...splitByGeom(fc, l.name || name));
     }
     return out;
   } finally {
@@ -231,7 +234,19 @@ function fromDxf(text: string, name: string, opts: { allowLocal?: boolean; epsg?
         'Ce DXF est en coordonnées locales (non géoréférencé). Importez-le via « Implantation de projet » pour le caler sur la carte.',
       );
   }
-  return splitByGeom(cleanFc(fc), name).map((l) => ({ ...l, warning }));
+  return splitByGeom(cleanFc(fc), name).map((l) => ({ ...l, warning, local: crs === 'local', units: r.units }));
+}
+
+/** DXF : UTF-8 à partir d'AutoCAD 2007 (AC1021) ; avant, page de code $DWGCODEPAGE (souvent ANSI_1252). */
+function decodeDxf(buf: Buffer): string {
+  const head = buf.subarray(0, 4000).toString('latin1');
+  const ver = head.match(/\$ACADVER\s*\r?\n\s*1\s*\r?\n\s*AC(\d{4})/)?.[1];
+  const cp = head.match(/\$DWGCODEPAGE\s*\r?\n\s*3\s*\r?\n\s*(\S+)/)?.[1];
+  const utf8 = buf.toString('utf8');
+  if (ver && Number(ver) >= 1021) return utf8;
+  if (cp && /ANSI_125\d|ANSI_1252|ISO8859/i.test(cp)) return buf.toString('latin1');
+  // sans indication : UTF-8 s'il est valide, sinon Latin-1
+  return utf8.includes('\ufffd') ? buf.toString('latin1') : utf8;
 }
 
 export async function importFile(fileName: string, buf: Buffer, opts: { allowLocalDxf?: boolean; epsg?: number } = {}): Promise<ImportedLayer[]> {
@@ -267,7 +282,7 @@ export async function importFile(fileName: string, buf: Buffer, opts: { allowLoc
     case '.txt':
       return fromCsv(text(), name);
     case '.dxf':
-      return fromDxf(text(), name, { allowLocal: opts.allowLocalDxf, epsg: opts.epsg });
+      return fromDxf(decodeDxf(buf), name, { allowLocal: opts.allowLocalDxf, epsg: opts.epsg });
     case '.shp':
       throw new HttpError(400, 'Pour un Shapefile, zippez ensemble les fichiers .shp, .shx, .dbf et .prj puis importez le .zip.');
     default:

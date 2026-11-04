@@ -251,3 +251,130 @@ Aucun défaut n'est **bloquant** : le projet s'ouvre, toutes les données sont p
 - L'aller-retour QGIS → `/api/import` est exact au millimètre, sans inversion d'axes.
 
 Scripts et sorties brutes : `/tmp/claude-0/-home-user-repo/d04c7302-6ad4-5052-bd0d-8db035949e71/scratchpad/qgis/`, avec les scripts dans `scripts/` et les journaux dans `out/`.
+
+---
+
+## Deuxième passage (après corrections)
+
+Nouveaux exports téléchargés le 04/11/2026 à 19:49 sur le serveur reconstruit, puis mêmes contrôles : QGIS 3.34.4, ezdxf, OGR et aller-retour `/api/import`. Les PNG de `exemples/qgis/` ont été remplacés par les rendus de ce passage, et 4 vues ont été ajoutées :
+- `rendu_isochrones.png` ;
+- `rendu_population.png` : population vue depuis le projet ;
+- `rendu_population_gpkg_seul.png` : population vue depuis le GeoPackage ouvert seul ;
+- `rendu_densite_chaleur.png`.
+
+Entre les deux passages, le site s'est enrichi de couches d'analyse : « Zones d'analyse », « Isochrones à pied (15, 10, 5 min) », « Densité (100 m) — Annotations », « Chaleur — Annotations » et « Tampon 50 m — Chaleur — Annotations ». Le projet compte maintenant **23 couches**, et le GeoPackage 18 tables plus `layer_styles`.
+
+### Vérification des 9 corrections annoncées
+
+| n° | Correction | Résultat | Preuve |
+|---|---|---|---|
+| 1 | Identifiants de couches d'au moins 11 caractères | **Corrigé** | Tous les identifiants ont au moins 15 caractères (`fond_mw2j6ew000m`, …). **23 nœuds sur 23** sont résolus dans l'arbre. Le fond XYZ (EPSG:3857, valide) est **la dernière couche**. Ses tuiles ne sont pas rendues dans le bac à sable, faute d'accès réseau pour QGIS : ce n'est pas bloquant. |
+| 2 | Une table par type de géométrie | **Corrigé** | Annotations : `annotations_points` (6), `annotations_lignes` (5), `annotations_polygones` (6). Isochrones : `…_polygones` (3), `…_points` (1). Chaque table a son style (marqueur, ligne, remplissage rouge à 15 %), dans le projet comme dans le GeoPackage seul. Rectangle, cercle, polygone, flèches, cotations et croquis sont visibles (`rendu_annotations_zoom.png`). |
+| 3 | `priority="5"` sur `<placement>` | **Corrigé** | Étiquettes placées : « Marché central », « 1 », « 2 », « 4 » et « Îlot test » (zones d'analyse). Sur la vue d'ensemble, « 3 » est placé aussi. Les doublons superposés sont écartés par la gestion des collisions, ce qui est normal. |
+| 4 | Classes graduées calculées à l'export | **Partiel** | **Dans le GeoPackage** (`layer_styles`) : 5 classes (10,3 – 109,1 – 157,4 – 188,8 – 204,9 – 239,9) avec 19, 18, 18, 18 et 17 objets. **Dans le `.qgs`** : la couche Population reste un `singleSymbol` gris (`156,163,175,179`). Voir le défaut R1. |
+| 5 | DXF en Windows-1252 avec `$DWGCODEPAGE` | **Corrigé à l'export** | `$DWGCODEPAGE = ANSI_1252`. ezdxf et OGR lisent « Marché central » et « 1 Marché central » sans erreur. En revanche, l'import Chuilacarte de ce DXF lit maintenant les accents de travers (défaut R2). |
+| 6 | Courbes à leur altitude | **Corrigé** | Élévations de 0, 2, 4 … 16 m, cohérentes avec le champ `altitude` du GeoPackage (0 à 16). OGR lit des Z de 0 à 16 sur `Courbes_de_niveau_2_m`. |
+| 7 | Étiquettes `coalesce("texte", to_string("numero"))` | **Corrigé** | Les repères affichent leur numéro (1 à 4). |
+| 8 | DASHED/DOT, calque Annotations en rouge, pas de `_` final | **Presque** | LTYPE `DASHED` (tiret de 2 m, espace de 1 m) et `DOT`, appliqués par calque : emprise, zones d'analyse et tampon 50 m en tirets, tampon 300 m en pointillés. Le calque Annotations est en ACI 1 (rouge). Il reste `Batiments_detectes_Google_Open_` avec un `_` final (défaut R5). |
+| 9 | Source XYZ échappée une seule fois ; `fid` retiré à l'import | **Corrigé** | `source="type=xyz&amp;url=…"` est correct. Les couches réimportées n'ont plus de propriété `fid`. |
+
+### Résultats chiffrés du deuxième passage
+
+**Projet.** `read()` renvoie `True`, en EPSG:32628. Les **23 couches sont valides** et les nombres d'objets correspondent tous au GeoPackage. Les vecteurs sont en 32628, les images en 4326 et les XYZ en 3857. Les emprises des images n'ont pas changé, et le calage est toujours exact.
+
+**Ordre des couches**, du dessus vers le dessous : annotations, analyses, emprise et tampon, voirie, bâti, limites, population, images, fond.
+
+**GeoPackage seul.** Pour les 18 tables, le style de `layer_styles` est appliqué dès l'ouverture : catégorisé pour la voirie, gradué pour le bâti, la population, les isochrones et la densité. `loadDefaultStyle()` renvoie `True`.
+
+**`qgis:checkvalidity`.** Aucune géométrie invalide avec la méthode GEOS sur les tables testées, nouvelles tables d'analyse comprises. Avec la méthode QGIS, il reste 1 erreur dans `annotations_lignes` : le sommet en double du croquis (ancien défaut n° 10, non traité).
+
+**DXF.** `readfile`, `recover` et `audit` signalent 0 erreur. On compte 1329 entités sur 13 calques, avec X de 235 801 à 237 836 et Y de 1 623 064 à 1 625 398 (UTM 28N). L'emprise mesure toujours **323,283 m** dans le DXF contre **323,282 m** avec pyproj, soit un écart maximal de 0,6 mm.
+
+**Aller-retour.**
+- Le bâtiment ajouté dans QGIS revient à (−17,446000, 14,676000) avec **0,0 m d'écart**, et des côtés de 19,991 × 9,995 m.
+- Les 3 points créés en EPSG:32628 reviennent exactement à leur position WGS84.
+- 19 couches sont relues, sans `fid` ni `layer_styles`.
+
+**Appréciation visuelle.**
+- La carte est complète : annotations rouges lisibles avec leurs numéros, zone d'analyse en tirets violets étiquetée, voirie hiérarchisée, bâti gradué, courbes, et emprise hachurée.
+- Les isochrones, visibles dans Chuilacarte (remplissage violet à 35 %), recouvrent une grande partie de la vue (`rendu_projet.png`). C'est fidèle au réglage du site.
+- La population en classes est propre quand on ouvre le GeoPackage seul (`rendu_population_gpkg_seul.png`), mais elle reste grise dans le projet (`rendu_population.png`).
+
+### Défauts restants
+
+| n° | Gravité | Défaut |
+|---|---|---|
+| R1 | Important | La population n'est toujours pas graduée dans le `.qgs` |
+| R2 | Important | Régression : l'import d'un DXF Chuilacarte casse les accents |
+| R3 | Important | La carte de chaleur est exportée en points gris |
+| R4 | Mineur | Le point d'origine des isochrones n'a pas de symbole |
+| R5 | Mineur | Le calque DXF `Batiments_detectes_Google_Open_` garde un `_` final |
+| R6 | Mineur | Les calques DXF d'analyse sont en gris neutre |
+| R7 | Mineur | Classes graduées dégénérées (densité, bâti) |
+| R8 | Mineur | Les annotations reviennent en 3 couches à l'import |
+| R9 | Mineur | Anciens défauts mineurs non traités |
+
+#### R1. Important : la population n'est toujours pas graduée dans le `.qgs`
+
+**Preuve.** Dans le `.qgs`, `<renderer-v2 type="singleSymbol">` est gris. Dans `layer_styles`, la même couche a un `graduatedSymbol` à 5 classes. Le projet et le GeoPackage ne concordent donc pas.
+
+**Cause probable.** Les classes sont calculées dans le chemin qui écrit `layer_styles`, mais `buildQgisBundle` appelle `layerQml(l, …)` avec la couche d'origine, dont `classes` est vide.
+
+**Correction suggérée.** Calculer les classes une seule fois, avant les deux usages, et passer la couche complétée à `layerQml` dans `qgisProject.ts`.
+
+#### R2. Important : régression, l'import d'un DXF Chuilacarte casse les accents
+
+**Preuve.** Le DXF exporté, réimporté par `curl -F file=@site.dxf /api/import`, donne `"texte": "March� central"` (octets `EF BF BD`). Au premier passage, le texte revenait bien en « Marché central ».
+
+**Cause probable.** `importers.ts` décode le DXF en UTF-8 (`text()`) sans lire `$DWGCODEPAGE`.
+
+**Correction suggérée.** Lire `$DWGCODEPAGE`. Si la valeur est `ANSI_125x` ou si la version est antérieure à AC1021, décoder en `windows-125x` avec `TextDecoder`, sinon en UTF-8. Gérer aussi les séquences `\U+XXXX`.
+
+#### R3. Important : la carte de chaleur est exportée en points gris
+
+**Preuve.** La couche « Chaleur — Annotations » est en mode `heatmap` (rayon 30, intensité 1) dans Chuilacarte. Le projet et le GeoPackage contiennent un `singleSymbol` de marqueurs gris (`156,163,175,204`), et aucune chaleur n'apparaît dans QGIS.
+
+**Correction suggérée.** Générer `<renderer-v2 type="heatmapRenderer" radius="…" radius_unit="0|1" … weight_expression="" quality="3"><colorramp …/></renderer-v2>`.
+
+#### R4. Mineur : le point d'origine des isochrones n'a pas de symbole
+
+**Preuve.** `isochrones_…_points` contient le seul point d'origine, avec `minutes = 0`. Il hérite du renderer gradué de 5 à 15 : `symbolForFeature` ne renvoie aucun symbole, et le point est invisible.
+
+**Correction suggérée.** Pour les tables issues du découpage dont le champ de classement n'a pas de sens, utiliser un `singleSymbol`. Sinon, ajouter une classe 0–0.
+
+#### R5. Mineur : le calque DXF `Batiments_detectes_Google_Open_` garde un `_` final
+
+**Cause.** Le nom est tronqué à 31 caractères *après* la suppression des `_` finaux.
+
+**Correction suggérée.** Supprimer les `_` après la troncature.
+
+#### R6. Mineur : les calques DXF d'analyse sont en gris neutre
+
+**Preuve.** Isochrones, densité et chaleur sont en ACI 9 (gris clair), alors qu'ils sont violets ou rouges dans Chuilacarte.
+
+**Cause probable.** Ce sont des couches graduées ou en carte de chaleur, sans couleur unique.
+
+**Correction suggérée.** Prendre la couleur de la classe médiane, ou colorer chaque entité selon sa classe (comme pour le bâti).
+
+#### R7. Mineur : classes graduées dégénérées (densité, bâti)
+
+**Preuve.**
+- Densité : 2 classes, `0–0` et `0–6`, pour 22 hexagones à 0 et 1 à 6. Les cases vides sont dessinées en rose pâle.
+- Bâti Google : toujours 2 classes utilisées sur 5 (516 et 354 objets), à cause du filtre `surface_m2 > 100` (ancien défaut n° 7, non traité).
+
+**Correction suggérée.** Calculer les quantiles sur les valeurs distinctes, ou passer en intervalles égaux quand il y a moins de N valeurs distinctes. Recalculer les bornes après filtrage.
+
+#### R8. Mineur : les annotations reviennent en 3 couches à l'import
+
+**Preuve.** `annotations_points`, `annotations_lignes` et `annotations_polygones` (de même pour les isochrones) sont réimportées comme 3 couches distinctes au lieu de la couche mixte d'origine. Par ailleurs, un GeoPackage d'une seule couche est toujours nommé d'après le fichier (`modifie_seul`) et non d'après la table.
+
+**Correction suggérée.** À l'import, regrouper les tables `<base>_points`, `<base>_lignes` et `<base>_polygones` en une seule couche. Garder le nom de la table.
+
+#### R9. Mineur : anciens défauts mineurs non traités
+
+- n° 10 : sommet en double dans le croquis ;
+- n° 12 : attribution OpenFreeMap sur des tuiles OSM ;
+- n° 13 : WorldCover rééchantillonné en bilinéaire ;
+- n° 14 : police Inter imposée.
+
+Aucun défaut n'est bloquant au deuxième passage. Les deux défauts importants les plus visibles au premier passage (fond absent, annotations et étiquettes invisibles) sont corrigés.

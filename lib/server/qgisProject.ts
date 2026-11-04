@@ -73,7 +73,7 @@ export async function buildQgisBundle(site: Site): Promise<{ zip: Buffer; name: 
     for (const l of site.layers) {
       if (l.kind === 'vector') {
        for (const t of tables.filter((x) => x.layerId === l.id)) {
-        const qml = layerQml(l, t.features as any, t.kind);
+        const qml = layerQml(t.styled, t.features as any, t.kind);
         const id = mkId(l.name);
         const ds = `./${base}.gpkg|layername=${t.table}`;
         const lname = t.suffix ? `${l.name} (${t.suffix})` : l.name;
@@ -136,7 +136,7 @@ ${qmlBody(qml)}
 <id>${id}</id><datasource>./${esc(fname)}</datasource><layername>${esc(l.name)}</layername>
 <srs>${srsXml(4326)}</srs>
 <provider>gdal</provider>
-<pipe><rasterrenderer type="multibandcolor" opacity="${l.opacity}" alphaBand="${meta.channels === 4 ? 4 : -1}" redBand="1" greenBand="2" blueBand="3" nodataColor=""><rasterTransparency/></rasterrenderer><brightnesscontrast brightness="0" contrast="0"/><huesaturation saturation="0" colorizeOn="0"/><rasterresampler maxOversampling="2" zoomedInResampler="bilinear"/></pipe>
+<pipe><rasterrenderer type="multibandcolor" opacity="${l.opacity}" alphaBand="${meta.channels === 4 ? 4 : -1}" redBand="1" greenBand="2" blueBand="3" nodataColor=""><rasterTransparency/></rasterrenderer><brightnesscontrast brightness="0" contrast="0"/><huesaturation saturation="0" colorizeOn="0"/><rasterresampler maxOversampling="2"${l.raster.legend ? '' : ' zoomedInResampler="bilinear"'}/></pipe>
 <blendMode>0</blendMode>
 </maplayer>`,
         });

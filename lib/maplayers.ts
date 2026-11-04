@@ -112,7 +112,7 @@ export function layerSpecs(layer: Layer, o: BuildOpts): LayerSpecification[] {
   const out: LayerSpecification[] = [];
   const op = layer.opacity;
   if (layer.kind === 'raster') {
-    out.push({ id: `lyr-${layer.id}-raster`, type: 'raster', source: src, layout: { visibility: vis }, paint: { 'raster-opacity': op, 'raster-fade-duration': 0 } });
+    out.push({ id: `lyr-${layer.id}-raster`, type: 'raster', source: src, layout: { visibility: vis }, paint: { 'raster-opacity': op, 'raster-fade-duration': 0, ...(layer.raster?.legend ? { 'raster-resampling': 'nearest' as const } : {}) } });
     return out;
   }
   if (layer.role === 'annotations') return annotationSpecs(layer, vis, op);
@@ -128,11 +128,20 @@ export function layerSpecs(layer: Layer, o: BuildOpts): LayerSpecification[] {
         layer.role === 'project'
           ? (['case', ['has', 'hauteur'], ['to-number', ['get', 'hauteur'], 0], (layer.project?.levels ?? 3) * (layer.project?.levelHeight ?? 3)] as Expr)
           : heightExpr(o.site.settings.levelHeight, o.site.settings.defaultHeight);
+      const notParcel: Expr = ['!', ['in', 'PARCEL', ['upcase', ['to-string', ['coalesce', ['get', 'calque'], '']]]]];
+      out.push({
+        id: `lyr-${layer.id}-outline`,
+        type: 'line',
+        source: src,
+        filter: withFilter(POLY, layer.filter),
+        layout: { visibility: vis },
+        paint: { 'line-color': s.stroke, 'line-width': Math.max(0.5, s.strokeWidth), 'line-opacity': 0.8 * op },
+      });
       out.push({
         id: `lyr-${layer.id}-ext`,
         type: 'fill-extrusion',
         source: src,
-        filter: withFilter(POLY, layer.filter),
+        filter: withFilter(layer.role === 'project' ? (['all', POLY, notParcel] as Expr) : POLY, layer.filter),
         layout: { visibility: vis },
         paint: {
           'fill-extrusion-color': fillColor as any,

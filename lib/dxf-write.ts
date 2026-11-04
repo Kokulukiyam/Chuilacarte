@@ -17,8 +17,8 @@ function safeLayer(n: string) {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^A-Za-z0-9_-]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 31) || '0';
+    .slice(0, 31)
+    .replace(/^_+|_+$/g, '') || '0';
 }
 
 /** Couleur ACI la plus proche d'une couleur hexadécimale (palette de base). */

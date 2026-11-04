@@ -77,7 +77,8 @@ export type LayerRole =
   | 'imported'
   | 'raster'
   | 'perimeter'
-  | 'buffer';
+  | 'buffer'
+  | 'shadow';
 
 export interface RasterInfo {
   type: 'image' | 'tiles';
@@ -122,7 +123,7 @@ export interface Layer {
   /** couche calée (plan de projet, image) */
   placement?: Placement;
   /** hauteur du projet (m) ou niveaux, pour 3D / calculs */
-  project?: { levels: number; levelHeight: number; parcelLayerId?: string };
+  project?: { levels: number; levelHeight: number; parcel?: import('geojson').Polygon | import('geojson').MultiPolygon; parcelName?: string };
   /** afficher dans la légende des mises en page */
   legend?: boolean;
   legendLabel?: string;

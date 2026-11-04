@@ -55,7 +55,7 @@ const KIND_FR: Record<string, string> = { marker: 'points', line: 'lignes', fill
 export function buildGpkg(file: string, site: Site, layers: ExportLayer[], crs: 'utm' | 'wgs84' = 'utm') {
   const used = new Set<string>();
   const srsId = crs === 'utm' ? site.utm.epsg : 4326;
-  const gl: (GpkgLayer & { layerId: string; kind: 'marker' | 'line' | 'fill'; suffix?: string })[] = [];
+  const gl: (GpkgLayer & { layerId: string; kind: 'marker' | 'line' | 'fill'; suffix?: string; styled: Layer })[] = [];
   for (const { layer, features } of layers) {
     const feats = (crs === 'utm' ? toUtmFeatures(site, features) : features).map((f) => ({ geometry: f.geometry as Geometry, properties: cleanProps(layer, f.properties || {}) }));
     const groups = new Map<string, typeof feats>();
@@ -79,11 +79,12 @@ export function buildGpkg(file: string, site: Site, layers: ExportLayer[], crs: 
         features: g,
         geomType: geomTypeOf(g),
         qml: layerQml(style, g, k),
+        styled: style,
       });
     }
   }
   writeGpkg(file, gl, crs === 'utm' ? { id: srsId, name: `WGS 84 / UTM zone ${site.utm.zone}${site.utm.south ? 'S' : 'N'}`, wkt: utmWkt(srsId) } : { id: 4326, name: 'WGS 84', wkt: '' });
-  return gl.map((g) => ({ layerId: g.layerId, table: g.table, geomType: g.geomType, count: g.features.length, features: g.features, kind: g.kind, suffix: g.suffix }));
+  return gl.map((g) => ({ layerId: g.layerId, table: g.table, geomType: g.geomType, count: g.features.length, features: g.features, kind: g.kind, suffix: g.suffix, styled: g.styled }));
 }
 
 /** Style gradué sans classes (calcul jamais fait) : on calcule les bornes sur les objets exportés. */

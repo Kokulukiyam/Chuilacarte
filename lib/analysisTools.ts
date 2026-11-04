@@ -158,7 +158,7 @@ registerTool('isochrone', {
           field: 'minutes',
           method: 'equal',
           ramp: 'violet',
-          classes: [...new Set(vals)].sort((x, y) => x - y).map((m, i, arr) => ({ min: m, max: m, color: ['#4c1d95', '#7c3aed', '#a78bfa', '#c4b5fd', '#ede9fe'][Math.min(4, arr.length - 1 - i)] })),
+          classes: [...new Set(vals)].sort((x, y) => x - y).map((m, i, arr) => ({ min: i === 0 ? 0 : arr[i - 1], max: m, color: ['#4c1d95', '#7c3aed', '#a78bfa', '#c4b5fd', '#ede9fe'][Math.min(4, arr.length - 1 - i)] })),
         },
         pointSize: 9,
         pointShape: 'star',

@@ -16,6 +16,7 @@ import { useConfig } from '@/lib/config';
 import '@/lib/annotate';
 import '@/lib/edit';
 import '@/lib/analysisTools';
+import '@/lib/projectTools';
 import { AnnotationBar } from './AnnotationProps';
 
 export default function Workspace({ slug }: { slug: string }) {

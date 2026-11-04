@@ -163,19 +163,23 @@ export function computeGradClasses(values: number[], method: 'equal' | 'quantile
   if (!vals.length) return [];
   const min = vals[0];
   const max = vals[vals.length - 1];
-  const breaks: number[] = [min];
-  for (let i = 1; i < n; i++) {
-    if (method === 'equal') breaks.push(min + ((max - min) * i) / n);
-    else breaks.push(vals[Math.min(vals.length - 1, Math.floor((vals.length * i) / n))]);
+  const uniq = [...new Set(vals)];
+  let breaks: number[];
+  if (uniq.length <= n) {
+    // peu de valeurs distinctes : une classe par valeur
+    breaks = [uniq[0], ...uniq];
+  } else {
+    breaks = [min];
+    for (let i = 1; i < n; i++) {
+      if (method === 'equal') breaks.push(min + ((max - min) * i) / n);
+      else breaks.push(vals[Math.min(vals.length - 1, Math.floor((vals.length * i) / n))]);
+    }
+    breaks.push(max);
+    breaks = breaks.filter((b, i) => i === 0 || b > breaks[i - 1]);
   }
-  breaks.push(max);
+  const k = breaks.length - 1;
   const out = [];
-  for (let i = 0; i < n; i++) {
-    const lo = breaks[i];
-    const hi = breaks[i + 1];
-    if (i > 0 && hi <= lo && out.length) continue;
-    out.push({ min: lo, max: hi, color: colors[Math.round((i * (colors.length - 1)) / Math.max(1, n - 1))] });
-  }
+  for (let i = 0; i < k; i++) out.push({ min: breaks[i], max: breaks[i + 1], color: colors[Math.round((i * (colors.length - 1)) / Math.max(1, k - 1))] });
   return out;
 }
 

@@ -24,6 +24,7 @@ const ROLE_RANK: Record<LayerRole, number> = {
   landuse: 15,
   population: 16,
   raster: 17,
+  shadow: 10.5,
 };
 
 export function insertIndex(layers: Layer[], role: LayerRole): number {

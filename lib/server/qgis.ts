@@ -64,6 +64,10 @@ function kindOf(layer: Layer, feats: { geometry: Geometry }[]): Kind {
 function rendererXml(layer: Layer, kind: Kind) {
   const s = layer.style;
   const main = kind === 'line' ? s.stroke : s.fill;
+  if (s.mode === 'heatmap' && kind === 'marker') {
+    const r = ((s.heatmap?.radius ?? 30) * PX).toFixed(2);
+    return `<renderer-v2 type="heatmapRenderer" radius="${r}" radius_unit="0" radius_map_unit_scale="3x:0,0,0,0,0,0" max_value="0" quality="3" weight_expression="" enableorderby="0" forceraster="0"><colorramp type="gradient" name="[source]"><prop k="color1" v="255,255,178,0"/><prop k="color2" v="189,0,38,255"/><prop k="discrete" v="0"/><prop k="rampType" v="gradient"/><prop k="stops" v="0.2;254,217,118,255:0.4;254,178,76,255:0.6;253,141,60,255:0.8;240,59,32,255"/></colorramp></renderer-v2>`;
+  }
   if (layer.role === 'annotations') return `<renderer-v2 type="singleSymbol" symbollevels="0" enableorderby="0" forceraster="0"><symbols>${symbolXml('0', kind, { ...s, fill: '#dc2626', stroke: '#dc2626', fillOpacity: kind === 'fill' ? 0.15 : 1, strokeWidth: 2 }, '#dc2626', { dd: true })}</symbols></renderer-v2>`;
   if (s.mode === 'categorized' && s.categorized?.field && s.categorized.classes.length) {
     const cats = s.categorized.classes;
