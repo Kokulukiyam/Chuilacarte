@@ -15,6 +15,7 @@ import LayoutEditor from './LayoutEditor';
 import { useConfig } from '@/lib/config';
 import '@/lib/annotate';
 import '@/lib/edit';
+import '@/lib/analysisTools';
 import { AnnotationBar } from './AnnotationProps';
 
 export default function Workspace({ slug }: { slug: string }) {

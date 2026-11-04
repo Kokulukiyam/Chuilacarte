@@ -2,7 +2,8 @@
 import maplibregl, { type StyleSpecification } from 'maplibre-gl';
 import { basemapById, absUrl } from '../basemaps';
 import { buildBaseStyle, sentinelForSite } from '../mapbase';
-import type { Layout, Site } from '../types';
+import type { FC, Layout, Site } from '../types';
+import { heatmapSpec } from '../maplayers';
 import { makeProjector, PX_MM, zoomForScale } from './geo';
 import type { BasemapTile } from './svg';
 
@@ -21,7 +22,7 @@ export function exportBasemap(id: string): { id: string; note?: string } {
   return { id };
 }
 
-async function siteRasterStyle(style: StyleSpecification, site: Site) {
+async function siteRasterStyle(style: StyleSpecification, site: Site, data?: Record<string, FC>) {
   // couches raster visibles du site (images Sentinel-2, occupation du sol, eau, plans calés…), du bas vers le haut
   for (const l of [...site.layers].reverse()) {
     if (!l.visible || l.kind !== 'raster' || !l.raster) continue;
@@ -38,6 +39,13 @@ async function siteRasterStyle(style: StyleSpecification, site: Site) {
       style.sources[id] = { type: 'image', url, coordinates: coords } as any;
     } else style.sources[id] = { type: 'raster', tiles: [absUrl(r.url)], tileSize: r.tileSize || 256, maxzoom: r.maxzoom || 18 } as any;
     style.layers.push({ id, type: 'raster', source: id, paint: { 'raster-opacity': l.opacity, 'raster-fade-duration': 0 } });
+  }
+  // cartes de chaleur (non vectorisables) : rendues avec le fond
+  for (const l of [...site.layers].reverse()) {
+    if (!l.visible || l.kind !== 'vector' || l.style.mode !== 'heatmap' || !data?.[l.id]) continue;
+    const id = `x-${l.id}`;
+    style.sources[id] = { type: 'geojson', data: data[l.id] } as any;
+    style.layers.push(heatmapSpec(l, 'visible', l.opacity, id));
   }
   return style;
 }
@@ -67,10 +75,10 @@ function waitIdle(map: maplibregl.Map, timeout = 45000) {
  * Rend le fond de carte (et les rasters du site) pour le cadre de la mise en page, par morceaux,
  * avec un rapport de pixels = dpi/96 pour que les étiquettes du fond gardent leur taille physique.
  */
-export async function renderBasemap(layout: Layout, site: Site, o: { dpi: number; maxMegapixels?: number; onProgress?: (done: number, total: number) => void }): Promise<BasemapRender> {
+export async function renderBasemap(layout: Layout, site: Site, o: { dpi: number; maxMegapixels?: number; data?: Record<string, FC>; onProgress?: (done: number, total: number) => void }): Promise<BasemapRender> {
   const { id: used, note } = exportBasemap(layout.basemap);
   const def = basemapById(used);
-  const style = await siteRasterStyle(await buildBaseStyle({ basemap: used, hillshade: site.overlays?.hillshade, contours: site.overlays?.contours, sentinelUrl: sentinelForSite(site) }), site);
+  const style = await siteRasterStyle(await buildBaseStyle({ basemap: used, hillshade: site.overlays?.hillshade, contours: site.overlays?.contours, sentinelUrl: sentinelForSite(site) }), site, o.data);
   const pr0 = makeProjector(layout);
   const f = pr0.frame;
   const onlyBackground = style.layers.length === 1 && style.layers[0].type === 'background';

@@ -30,7 +30,7 @@ export interface BuiltSvg {
 
 export async function buildLayoutSvg(layout: Layout, site: Site, data: Record<string, FC>, o: { dpi: number; onProgress?: (msg: string) => void }): Promise<BuiltSvg> {
   o.onProgress?.('Rendu du fond de carte…');
-  const bm = await renderBasemap(layout, site, { dpi: o.dpi, onProgress: (d, t) => o.onProgress?.(`Rendu du fond de carte… ${d}/${t}`) });
+  const bm = await renderBasemap(layout, site, { dpi: o.dpi, data, onProgress: (d, t) => o.onProgress?.(`Rendu du fond de carte… ${d}/${t}`) });
   const inset = layout.elements.some((e) => e.type === 'inset') ? await fetchInset(site) : undefined;
   const r = renderLayoutSvg({ layout, site, data, basemap: bm.tiles, background: bm.background, inset, basemapUsed: bm.used });
   return { svg: r.svg, attributions: r.attributions, note: bm.note, legendOverflow: r.legendOverflow, basemapDpi: Math.round(bm.dpi) };

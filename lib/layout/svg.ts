@@ -583,7 +583,7 @@ export function renderLayoutSvg(ctx: RenderCtx): { svg: string; attributions: st
   const labels: string[] = [];
   const placed: LabelBox[] = [];
   for (const l of [...visible].reverse()) {
-    if (l.kind !== 'vector') continue;
+    if (l.kind !== 'vector' || l.style.mode === 'heatmap') continue; // la chaleur est rendue avec le fond (raster)
     const fc = data[l.id];
     if (!fc) continue;
     map.push(l.role === 'annotations' ? renderAnnotations(l, fc, pr.project, site, font) : renderVectorLayer(l, fc, pr.project, view, defs, labels, placed, site, font));

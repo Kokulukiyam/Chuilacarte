@@ -62,7 +62,7 @@ function BasemapMenu() {
   return (
     <div className="relative" ref={ref}>
       <button className="btn" onClick={() => setOpen(!open)} data-testid="basemap-button">
-        <LayersIcon size={14} /> {BASEMAPS.find((b) => b.id === site.basemap)?.label || 'Fond'}
+        <LayersIcon size={14} /> <span className="max-w-[110px] truncate xl:max-w-[180px]">{BASEMAPS.find((b) => b.id === site.basemap)?.label || 'Fond'}</span>
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-40 w-64 rounded-md border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
@@ -120,7 +120,7 @@ export default function Toolbar() {
       <Link href="/" className="btn-ghost" title="Accueil">
         <ArrowLeft size={16} />
       </Link>
-      <div className="mr-2 max-w-[220px] truncate font-semibold" title={site.name}>
+      <div className="mr-1 max-w-[180px] shrink truncate font-semibold" title={site.name}>
         {site.name}
       </div>
       <div className="flex items-center gap-0.5 border-l border-zinc-200 pl-2 dark:border-zinc-800">
@@ -132,7 +132,7 @@ export default function Toolbar() {
         </button>
       </div>
       {!layoutMode && (
-        <div className="flex items-center gap-0.5 overflow-x-auto border-l border-zinc-200 pl-2 dark:border-zinc-800">
+        <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto border-l border-zinc-200 pl-2 dark:border-zinc-800">
           <ToolButton tool="select" icon={MousePointer2} label="Sélection" k="v" />
           {TOOLBAR_GROUPS.map((g, i) => (
             <div key={i} className="flex items-center gap-0.5 border-l border-zinc-200 pl-1 dark:border-zinc-800">
@@ -143,7 +143,7 @@ export default function Toolbar() {
           ))}
         </div>
       )}
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
         <SaveState />
         <ToolbarExtras />
         {!layoutMode && <ImportButton />}

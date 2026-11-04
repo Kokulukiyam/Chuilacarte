@@ -61,3 +61,20 @@ Chaque ligne : un choix non précisé par la spécification, et la raison.
 - Disposition par défaut : paysage = colonne d'habillage à droite (titre, nord, échelle, légende, encart, cartouche) ; portrait = bandeau en bas. Tailles proportionnelles au format.
 - Encart de situation : contours geoBoundaries simplifiés du pays et des régions.
 - Modèles de mise en page enregistrés dans `data/templates/` (sans le centre de la carte, pour être réutilisables sur d'autres sites).
+
+## Pont QGIS (étape 6)
+- Export QGIS = un zip contenant un dossier : GeoPackage unique (toutes les couches vectorielles, visibles ou non, en UTM du site), projet `.qgs` (XML lisible, chemins relatifs), images calées en PNG + `.pgw` (WGS84), fond XYZ, LISEZMOI.
+- Styles écrits deux fois : dans le projet (renderer + étiquettes) et dans la table `layer_styles` du GeoPackage (le GeoPackage seul s'ouvre donc aussi stylé).
+- Symbologie QGIS en millimètres (1 px = 0,2646 mm), symboles `<prop>` compatibles QGIS 3.x ; annotations : couleur pilotée par l'attribut `couleur`.
+- Fond XYZ du projet : tuiles OSM (QGIS les charge lui-même en interactif, ce que la politique OSM tolère) ; les fonds vectoriels OpenFreeMap n'ayant pas d'équivalent XYZ raster, l'équivalent raster OSM est proposé.
+- Retour depuis QGIS : l'import accepte GeoPackage (toutes projections, reprojeté par DuckDB/PROJ), Shapefile zippé, GeoJSON, et un zip de dossier (GeoPackage/GeoJSON/KML/CSV/DXF contenus).
+
+## Analyses (étape 7)
+- Synthèse calculée dans le navigateur, en UTM : surfaces bâties découpées exactement à la zone (intersection), longueurs de voirie découpées exactement aux bords de la zone, population pondérée par la part de chaque carreau dans la zone, espaces verts et eau en union (pas de double compte).
+- Couche de bâti : la plus complète dans la zone (souvent Google Open Buildings à Dakar), ou choisie ; la même couche est utilisée pour toutes les zones comparées.
+- Surface de plancher : bâtiments avec `niveaux` (ou `hauteur` / hauteur d'étage) comptés exactement ; les autres avec une hypothèse (hauteur par défaut / hauteur d'étage, 2 niveaux par défaut) affichée dans le tableau.
+- Distance au plus proche équipement de chaque famille : depuis le centre de la zone, en ligne droite (UTM).
+- Profil : MNS Copernicus GLO-30 interpolé (bilinéaire), pas d'échantillonnage adapté à la longueur (2 à 50 m).
+- Isochrones : OpenRouteService si `ORS_API_KEY`, sinon Valhalla FOSSGIS (1 requête/s), durées libres (5 max, 60 min max).
+- Carte de chaleur : style « Chaleur » de MapLibre (rendue avec le fond dans les exports, car non vectorielle) ; carte de densité : grille hexagonale (taille réglable) avec nombre et densité par hectare.
+- Zones d'analyse dessinées gardées dans une couche « Zones d'analyse » (réutilisables, exportables).

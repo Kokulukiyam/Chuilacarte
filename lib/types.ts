@@ -36,7 +36,8 @@ export interface LayerStyle {
   pointSize: number;
   pointShape: PointShape;
   label: LabelStyle | null;
-  mode: 'simple' | 'categorized' | 'graduated';
+  mode: 'simple' | 'categorized' | 'graduated' | 'heatmap';
+  heatmap?: { radius: number; intensity: number };
   categorized?: { field: string; classes: CategoryClass[]; other: string };
   graduated?: { field: string; method: 'equal' | 'quantile'; ramp: string; classes: GradClass[] };
   /** nom du style prédéfini d'origine, informatif */

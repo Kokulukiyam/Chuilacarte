@@ -116,6 +116,7 @@ export function layerSpecs(layer: Layer, o: BuildOpts): LayerSpecification[] {
     return out;
   }
   if (layer.role === 'annotations') return annotationSpecs(layer, vis, op);
+  if (layer.style.mode === 'heatmap') return [heatmapSpec(layer, vis, op)];
   const fillColor = colorExpr(s, s.fill);
   const strokeColor = layer.geom === 'line' ? colorExpr(s, s.stroke) : s.stroke;
   const dash = DASH[s.dash];
@@ -234,6 +235,32 @@ export function layerSpecs(layer: Layer, o: BuildOpts): LayerSpecification[] {
     });
   }
   return out;
+}
+
+export const HEAT_RAMP: [number, string][] = [
+  [0, 'rgba(255,255,178,0)'],
+  [0.2, '#fed976'],
+  [0.4, '#feb24c'],
+  [0.6, '#fd8d3c'],
+  [0.8, '#f03b20'],
+  [1, '#bd0026'],
+];
+
+export function heatmapSpec(layer: Layer, vis: 'visible' | 'none', op: number, srcId = `src-${layer.id}`): LayerSpecification {
+  const h = layer.style.heatmap || { radius: 30, intensity: 1 };
+  return {
+    id: `lyr-${layer.id}-heat`,
+    type: 'heatmap',
+    source: srcId,
+    filter: withFilter(PT, layer.filter),
+    layout: { visibility: vis },
+    paint: {
+      'heatmap-radius': h.radius,
+      'heatmap-intensity': h.intensity,
+      'heatmap-opacity': 0.85 * op,
+      'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...HEAT_RAMP.flat()] as any,
+    },
+  };
 }
 
 function annotationSpecs(layer: Layer, vis: 'visible' | 'none', op: number): LayerSpecification[] {

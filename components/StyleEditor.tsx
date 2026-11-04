@@ -84,9 +84,9 @@ export default function StyleEditor({ layer }: { layer: Layer }) {
       <div className="space-y-2">
         <div className="section-title">Symbole</div>
         <div className="flex gap-1">
-          {(['simple', 'categorized', 'graduated'] as const).map((m) => (
+          {(['simple', 'categorized', 'graduated', ...(isPoint && layer.geom === 'point' ? (['heatmap'] as const) : [])] as const).map((m) => (
             <button key={m} className={`tool-btn border border-zinc-200 px-2 text-[12px] dark:border-zinc-700 ${s.mode === m ? 'active' : ''}`} onClick={() => set((x) => (x.mode = m))} data-testid={`style-mode-${m}`}>
-              {m === 'simple' ? 'Simple' : m === 'categorized' ? 'Catégorisé' : 'Gradué'}
+              {m === 'simple' ? 'Simple' : m === 'categorized' ? 'Catégorisé' : m === 'graduated' ? 'Gradué' : 'Chaleur'}
             </button>
           ))}
         </div>
@@ -152,6 +152,12 @@ export default function StyleEditor({ layer }: { layer: Layer }) {
         )}
       </div>
 
+      {s.mode === 'heatmap' && (
+        <div className="grid grid-cols-2 gap-2">
+          <Num label="Rayon (px)" value={s.heatmap?.radius ?? 30} min={2} max={200} step={1} onChange={(v) => set((x) => (x.heatmap = { radius: v, intensity: x.heatmap?.intensity ?? 1 }))} />
+          <Num label="Intensité" value={s.heatmap?.intensity ?? 1} min={0.1} max={10} step={0.1} onChange={(v) => set((x) => (x.heatmap = { radius: x.heatmap?.radius ?? 30, intensity: v }))} />
+        </div>
+      )}
       {s.mode === 'categorized' && <CategorizedEditor layer={layer} fields={fields} />}
       {s.mode === 'graduated' && <GraduatedEditor layer={layer} fields={fields} />}
 

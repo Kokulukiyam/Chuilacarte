@@ -92,7 +92,7 @@ export default function LayoutEditor() {
   const pxPerMm = fit * zoom;
 
   // fond de carte de l'aperçu (résolution écran), recalculé après une pause
-  const bmKey = layout ? JSON.stringify([layout.center, layout.scale, layout.basemap, layout.mapFrame, layout.width, layout.height, layout.bearing, site.overlays, site.layers.filter((l) => l.kind === 'raster' && l.visible).map((l) => [l.id, l.opacity, l.raster])]) : '';
+  const bmKey = layout ? JSON.stringify([layout.center, layout.scale, layout.basemap, layout.mapFrame, layout.width, layout.height, layout.bearing, site.overlays, site.layers.filter((l) => (l.kind === 'raster' || l.style.mode === 'heatmap') && l.visible).map((l) => [l.id, l.opacity, l.raster, l.style.heatmap])]) : '';
   useEffect(() => {
     if (!layout) return;
     let cancelled = false;
@@ -100,7 +100,7 @@ export default function LayoutEditor() {
       setBmBusy(true);
       try {
         const dpi = Math.max(50, Math.min(150, pxPerMm * 25.4 * (window.devicePixelRatio || 1)));
-        const r = await renderBasemap(layout, site, { dpi, maxMegapixels: 12 });
+        const r = await renderBasemap(layout, site, { dpi, maxMegapixels: 12, data: useStore.getState().data });
         if (!cancelled) setBm(r);
       } catch (e) {
         console.warn('aperçu du fond', e);

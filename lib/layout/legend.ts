@@ -47,6 +47,10 @@ export function buildLegend(site: Site, data: Record<string, FC>, opts: { hidden
         : l.geom === 'point'
           ? { kind: 'point', fill, stroke: s.stroke, strokeWidth: s.strokeWidth, shape: s.pointShape, size: s.pointSize }
           : { kind: 'fill', fill, fillOpacity: s.fillOpacity, stroke: s.stroke, strokeWidth: s.strokeWidth, dash: s.dash, hatch: s.hatch, hatchColor: s.hatchColor };
+    if (s.mode === 'heatmap') {
+      groups.push({ layerId: l.id, title: label, items: [{ label: 'Faible densité', swatch: { kind: 'raster', color: '#fed976' } }, { label: 'Densité moyenne', swatch: { kind: 'raster', color: '#fd8d3c' } }, { label: 'Forte densité', swatch: { kind: 'raster', color: '#bd0026' } }] });
+      continue;
+    }
     if (s.mode === 'categorized' && s.categorized?.classes.length) {
       // seulement les valeurs présentes dans la couche
       const present = new Set(fc.features.map((f) => String(f.properties?.[s.categorized!.field] ?? '')));

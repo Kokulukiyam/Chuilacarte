@@ -12,7 +12,7 @@ export default function ToolbarExtras() {
     <>
       {!layoutMode && (
         <button className="btn" onClick={() => setCollect(true)} data-testid="collect-open" title="Récupérer les données ouvertes sur l’emprise du site">
-          <DownloadCloud size={14} /> Collecter les données
+          <DownloadCloud size={14} /> <span className="hidden 2xl:inline">Collecter les données</span><span className="2xl:hidden">Collecter</span>
         </button>
       )}
       {EXTRA_BUTTONS.map((B, i) => (
