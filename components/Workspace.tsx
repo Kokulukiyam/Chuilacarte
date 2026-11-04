@@ -11,6 +11,7 @@ import RightPanel from './RightPanel';
 import Toast from './Toast';
 import { installShortcuts } from '@/lib/shortcuts';
 import BottomPanel from './BottomPanel';
+import LayoutEditor from './LayoutEditor';
 import { useConfig } from '@/lib/config';
 import '@/lib/annotate';
 import '@/lib/edit';
@@ -73,7 +74,7 @@ export default function Workspace({ slug }: { slug: string }) {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <Toolbar />
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         {!layoutMode && <LayersPanel />}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
@@ -83,6 +84,7 @@ export default function Workspace({ slug }: { slug: string }) {
           <BottomPanel />
         </div>
         <RightPanel />
+        {layoutMode && <LayoutEditor />}
       </div>
       <Toast />
     </div>

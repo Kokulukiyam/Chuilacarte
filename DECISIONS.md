@@ -45,3 +45,19 @@ Chaque ligne : un choix non précisé par la spécification, et la raison.
 - Sélection multiple par Maj + clic (même couche) pour la fusion.
 - Rotation et mise à l'échelle par boutons (±5°, ±10 %) en plus du glisser et de l'édition des sommets (Terra Draw).
 - Le clic qui termine un tracé est ignoré par la sélection (400 ms).
+
+## Mise en page et exports (étape 5)
+- Une seule chaîne de rendu : la mise en page est produite en SVG (unités = millimètres) ; l'aperçu, l'export SVG, le PDF (svg2pdf.js + jsPDF, polices embarquées) et le PNG (resvg côté serveur) en dérivent, donc tous identiques.
+- Projection du cadre : Web Mercator, échelle vraie au centre du cadre (écart < 0,1 % sur l'étendue d'un site) ; le nord est en haut (sauf rotation choisie, la flèche du nord suit).
+- Les couches du site sont vectorielles dans les exports ; le fond de carte (et les rasters du site : Sentinel-2, occupation du sol, eau, plans calés) est rendu par une carte MapLibre hors écran, par morceaux de 2048 px, avec un rapport de pixels dpi/96 pour garder la taille physique des étiquettes du fond.
+- Résolution du fond limitée à 64 mégapixels (≈ 200 dpi en A0, 300 dpi jusqu'à l'A2) pour tenir en mémoire ; les vecteurs, textes et habillage restent à la résolution de l'export.
+- Épaisseurs, tailles de symboles et d'étiquettes : 1 px écran = 0,2646 mm papier (96 dpi), pour que la carte imprimée ressemble à l'écran.
+- Halo des étiquettes : texte détouré dupliqué sous le texte plein (et non `paint-order`), pour un rendu identique dans le PDF, Illustrator et le PNG.
+- Les attributions de toutes les sources visibles et du fond sont toujours écrites dans le cadre de carte (et, par défaut, dans le cartouche).
+- PNG : densité 300 dpi inscrite dans le fichier ; une copie de chaque export est gardée dans `data/sites/<site>/exports/`.
+- Exports de données : le filtre attributaire de chaque couche est appliqué (ce qu'on voit est ce qu'on exporte) ; GeoPackage et DXF en UTM du site (mètres), GeoJSON en WGS84.
+- GeoPackage écrit directement (SQLite via better-sqlite3, en-têtes GeoPackage + WKB) : plusieurs couches dans un fichier et styles QGIS intégrés dans la table `layer_styles` (chargés automatiquement par QGIS).
+- DXF R12 (AC1009) : le format le plus largement relu (AutoCAD, QGIS, LibreCAD, ezdxf) ; un calque DXF par couche, couleur ACI la plus proche.
+- Disposition par défaut : paysage = colonne d'habillage à droite (titre, nord, échelle, légende, encart, cartouche) ; portrait = bandeau en bas. Tailles proportionnelles au format.
+- Encart de situation : contours geoBoundaries simplifiés du pays et des régions.
+- Modèles de mise en page enregistrés dans `data/templates/` (sans le centre de la carte, pour être réutilisables sur d'autres sites).
