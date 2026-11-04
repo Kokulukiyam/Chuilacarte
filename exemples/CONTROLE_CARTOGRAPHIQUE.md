@@ -1,5 +1,165 @@
 # Contrôle cartographique des exports de mise en page
 
+## 2e passage — 04/11/2026
+
+Version contrôlée : build de production `scripts/test-server.sh 3600` (dossier `.next-test-3600`, BUILD_ID `4v_RTN0znH0fFY_NQX3oR`), branche `claude/chuilacarte` au commit `019a5e1`. Le serveur a été arrêté à la fin du contrôle.
+
+**Méthode**
+- Trois sites neufs ont été créés par `POST /api/sites`, puis renommés par `PATCH` :
+  - `exemple-medina` « Médina îlot », tampon de 300 m ;
+  - `exemple-yoff` « Yoff », tampon de 300 m ;
+  - `exemple-fatick` « Fatick centre », tampon de 500 m.
+- La collecte a été lancée par l'interface (bouton « Collecter les données », sources par défaut) et pilotée par Playwright. Toutes les sources ont réussi sur les 3 sites (OSM, Overture, Google Open Buildings, Copernicus DEM, WorldCover, JRC, Sentinel-2, WorldPop, geoBoundaries).
+- Pour les mises en page, j'ai gardé les réglages par défaut :
+  - la première planche est créée automatiquement ; la seconde est créée avec « + Nouvelle mise en page » ;
+  - seuls le format, l'orientation et l'échelle ont été changés avec les menus.
+- Les exports ont été lancés un par un avec les boutons PNG, PDF et SVG. Aucune erreur dans la console du navigateur.
+- J'ai regardé chaque image : vue d'ensemble réduite, puis recadrages à pleine résolution du titre, de la légende, de la barre d'échelle, de la flèche du nord, du cartouche, des sources, de l'encart et des zones denses.
+- Les PDF ont été rastérisés avec Quick Look (`qlmanage -t -s 4000`), car poppler n'est pas installé. Les SVG ont été rendus dans Chromium.
+- Mesures :
+  - **barre d'échelle** : plus longue suite de pixels sombres dans le PNG à 300 dpi ;
+  - **échelle réelle** : centres des points d'équipements OSM retrouvés par leur couleur exacte (composantes connexes), puis distances sur la page comparées aux distances géodésiques WGS 84 (Vincenty), sur toutes les paires de points et séparément en est-ouest et en nord-sud ;
+  - **mémoire du serveur** : RSS de `next-server`, lu chaque seconde par `ps -o rss` pendant chaque export.
+
+### Fichiers produits
+
+| Site | Mise en page | PNG 300 dpi | PDF | SVG | PNG : durée / RSS max du serveur |
+|---|---|---|---|---|---|
+| Médina îlot | A3 paysage 1/1 000 | `medina/medina_A3_paysage_1-1000.png` (4 961 × 3 508) | `…pdf` (420 × 297 mm) | `…svg` | 6 s / 1,26 Go |
+| | A3 portrait 1/2 500 | `medina/medina_A3_portrait_1-2500.png` (3 508 × 4 961) | `…pdf` | `…svg` | 5 s / 0,93 Go |
+| Yoff | A3 paysage 1/5 000 | `yoff/yoff_A3_paysage_1-5000.png` (4 961 × 3 508) | `…pdf` | `…svg` | 5 s / 0,63 Go |
+| | A1 paysage 1/2 500 | `yoff/yoff_A1_paysage_1-2500.png` (9 933 × 7 016) | `…pdf` (841 × 594 mm) | `…svg` | 16 s / **1,73 Go** |
+| Fatick centre | A2 portrait 1/5 000 | `fatick/fatick_A2_portrait_1-5000.png` (4 961 × 7 016) | `…pdf` (420 × 594 mm) | `…svg` | 12 s / 1,38 Go |
+| | A4 paysage 1/10 000 | `fatick/fatick_A4_paysage_1-10000.png` (3 508 × 2 480) | `…pdf` (297 × 210 mm) | `…svg` | 5 s / 0,84 Go |
+
+Les fichiers du 1er passage ont été supprimés. Tous les PNG sont en RVB, sur 3 canaux, avec une densité de 300 dpi. Les PDF ont le bon format de page (MediaBox vérifiée).
+
+Le RSS de 1,26 Go mesuré sur Médina comprend la mémoire restée occupée après la collecte (DuckDB). Les exports PDF et SVG restent sous 1,4 Go.
+
+Les jonctions entre les bandes de rendu PNG (tous les 1 600 px) ne montrent aucune discontinuité : l'écart moyen entre deux lignes voisines est le même à la jonction qu'à côté.
+
+Réglages obtenus par défaut :
+- fond « Papier + noms de rues » ;
+- couches visibles : emprise, tampon, équipements, courbes, voirie, bâti Google, eau, espaces verts, occupation du sol OSM ;
+- bâti OSM masqué.
+
+### Mesures
+
+| Planche | Barre d'échelle (mesurée / attendue) | Échelle réelle est-ouest / nord-sud (médianes) | Plus longue paire de points |
+|---|---|---|---|
+| Médina A3 1/1 000 | 593 px = 50,2 mm avec contour (50 mm) | 1/1 000,0 / 1/1 000,0 (14 et 11 paires) | 274,19 mm pour 274,19 m |
+| Médina A3 1/2 500 | — (40 mm, même gabarit) | 1/2 500,0 / 1/2 500,0 (276 et 248 paires) | 314,65 mm pour 786,64 m |
+| Yoff A3 1/5 000 | 475 px = 40,2 mm (40 mm) | 1/4 999,9 / 1/5 000,1 | 356,73 mm pour 1 783,65 m |
+| Yoff A1 1/2 500 | 947 px = 80,2 mm (80 mm) | 1/2 500,0 / 1/2 499,9 | 654,33 mm pour 1 635,81 m |
+| Fatick A2 1/5 000 | 475 px = 40,2 mm (40 mm) | 1/4 999,9 / 1/5 000,0 | 446,02 mm pour 2 230,05 m |
+| Fatick A4 1/10 000 | 593 px = 50,2 mm (50 mm) | 1/10 000,1 / 1/10 000,1 | 245,99 mm pour 2 459,88 m |
+
+Les 0,2 mm d'écart sur les barres viennent du contour de 0,2 mm. Les échelles sont exactes à mieux que 0,01 % dans les deux directions.
+
+### Statut des défauts du 1er passage
+
+| Défaut | Statut | Preuve |
+|---|---|---|
+| Bloquant 1 — mémoire de l'export PNG (10,4 Go en A1, serveur tué) | **Corrigé** | A1 1/2 500 rendu en 16 s avec un RSS max de 1,73 Go. Exports lancés un par un sans incident. Pas de jonction visible entre les bandes. |
+| Bloquant 2 — « légende incomplète » imprimé en rouge | **Corrigé** | Aucun texte rouge dans les 18 fichiers (la chaîne n'apparaît pas dans les SVG). La légende se réduit pour tenir. Effet secondaire : texte à 3,9 pt en A4 (voir N3). |
+| Bloquant 3 — libellés et valeurs du cartouche superposés (A1, A2) | **Corrigé** | Yoff A1 : la colonne « PROJECTION » est séparée de sa valeur ; même chose en Fatick A2 (recadrages du cartouche). |
+| C1 — fond et couches doublés (bâti Google + OSM, chaussées, eau, verts) | **Corrigé** | Une seule source de bâti (Google) ; le fond papier n'a ni bâti, ni chaussée, ni eau. Les chevauchements qui restent viennent des empreintes Google elles-mêmes (Médina 1/1 000, îlot central). |
+| C2 — noms de rues barrés par les voies | **Corrigé** (les étiquettes passent au-dessus), mais voir N4 : les noms ne sont pas posés sur les voies et n'ont pas de halo | Médina 1/2 500, « Avenue Blaise Diagne » au-dessus de la voie ; Yoff, « Rue Ma Libasse Ndir ». |
+| C3 — toponymie faible | **Toujours présent** | Fatick A2 et A4 : un seul nom (« Fatick ») et aucun nom de rue sur 2 km. Yoff : aéroport sans nom, 3 noms de rues. Aucun équipement nommé : les couches `poi` du fond sont filtrées (`lib/mapbase.ts:60`) et les équipements n'ont pas d'étiquette par défaut. |
+| C4 — courbes de niveau | **Partiellement corrigé** | Les courbes sont lissées et cotées (« 6 m », « 10 m », « 20 m », avec halo). Mais au 1/1 000 (Médina), elles viennent toujours d'un modèle de surface à 30 m qui inclut le bâti : boucles fermées autour des îlots, sans valeur pour un plan masse. Elles sont aussi dessinées **au-dessus** du bâti (recadrage Médina 1/1 000, 1700-2900 × 1400-2300 px). |
+| C5 — anisotropie nord-sud de 0,63 % | **Corrigé** | Est-ouest et nord-sud à 1/1 000,0 près (tableau ci-dessus). Les points sont décalés de 9 à 15 px par rapport à une projection sphérique pure, ce qui confirme la correction ellipsoïdale. |
+| C6 — carte raster dans le PDF et le SVG | **Largement corrigé** | Les couches du site sont vectorielles : 447 à 8 503 `<path>` par SVG. Seules les étiquettes du fond restent raster (1 à 9 images de 2 047 px, soit 200 ppi, dans le PDF et le SVG). Le SVG n'inclut pas sa police (voir N9). |
+| C7 — police CID du PDF | **Partiellement corrigé** | Les polices sont maintenant en sous-ensemble (flux FontFile2 de 84 à 90 Ko contre 342 Ko pour le TTF complet). `/Ordering (Identity-H)` reste présent 3 fois dans chaque PDF. |
+| C8 — attribution répétée et coupée | **Corrigé** | Une seule occurrence, dans le cartouche. « © les contributeurs d'OpenStreetMap » n'apparaît qu'une fois. Rien n'est coupé, dans le PNG comme dans le PDF. |
+| C9 — texte du cartouche hors cadre | **Corrigé** | Les sources passent à la ligne à l'intérieur du cadre sur les 6 planches, y compris en A1 (mesure avec la vraie police). |
+| C10 — cartouche pauvre | **Partiellement corrigé** | Les champs maître d'ouvrage, auteur, phase et planche existent, mais ils sont vides et masqués par défaut. Il reste 4 lignes, et 50 à 75 % du cadre est vide sur les 6 planches. Le sous-titre suivant l'échelle ne fonctionne qu'à la création (voir N1). |
+| C11 — légende avec des entrées hors champ | **Corrigé** | Le tampon n'est en légende que s'il est visible : il est absent à Médina 1/2 500, et présent en Fatick A4 où il passe dans les coins. |
+| C12 — légende mal hiérarchisée, occupation du sol grise | **Partiellement corrigé** | L'occupation du sol est catégorisée (Habitat, Commerce, Aéroport, Emprise militaire, Cimetière). Mais « Courbes de niveau » est toujours rangé sans titre sous « Équipements (OSM) » sur les 6 planches. Les catégories hors liste sont dessinées en gris sans entrée de légende (voir N2). |
+| C13 — carte de situation sommaire | **Toujours présent** | Sénégal seul : sans océan, sans pays voisins, sans nom, sans cadre d'emprise. Le point de Dakar touche le bord gauche du pays (Médina, Yoff). Le texte « Situation » (2,2 mm) et le point (rayon 1,4 mm) ne suivent pas le format : ils sont minuscules en A1. |
+| C14 — noms de fichiers, PNG en RGBA | **Corrigé** | Les noms suivent le format (`planche-a3-A3`, `planche-a2-A2`), et les PNG sont en RVB. Seul reste : la 2e planche s'appelle « Planche 2 », d'où des fichiers `…-planche-2-A4-…`. |
+| Priorité 2 n° 10 — tailles qui ne suivent pas le format | **Partiellement corrigé** | Sur la carte, traits et points suivent le facteur ×2 en A1 (points de 3,7 mm). Mais les symboles de légende, l'épaisseur de la barre d'échelle (1,6 mm), le texte et le point de l'encart, et les étiquettes du fond restent à la taille A3 (voir N5). |
+| Priorité 3 n° 18 — points d'équipement superposés | **Toujours présent** | Médina 1/2 500 : deux points « Sport et loisirs » collés. Fatick A2 : deux « Commerce » collés au nord-ouest de l'emprise. |
+
+### Nouveaux défauts
+
+**N1 — Le sous-titre ne suit pas l'échelle choisie.** Gravité : important.
+- Symptôme : les 6 planches portent « Plan de quartier ». On attendrait « Plan masse » au 1/1 000 (Médina A3 paysage) et « Plan de l'îlot et de ses abords » au 1/2 500 (Médina A3 portrait, Yoff A1).
+- Preuve : vue d'ensemble de chaque planche, sous le titre.
+- Cause probable : `subtitleFor(l.scale)` n'est appelé que dans `newLayout` (`lib/layout/defaults.ts`), avec l'échelle d'ajustement automatique (1/5 000 ici). Changer l'échelle dans le menu ne met pas le sous-titre à jour.
+
+**N2 — Surfaces grises sans entrée de légende.** Gravité : important.
+- Symptôme : les valeurs d'occupation du sol absentes de la liste de classes sont peintes dans la couleur « autre » (#e7e5e4), sans entrée de légende. Sur le papier, on voit des surfaces grises inexpliquées :
+  - Médina : `stadium`, `brownfield`, `track`, `restaurant`, `traffic_island` ; disque gris au centre du rond-point (recadrage 1700-3000 × 1100-2000 px du 1/2 500) ;
+  - Yoff : `brownfield`, `swimming_pool` ;
+  - Fatick : stade (aplat beige-gris autour du terrain, A2 et A4).
+- Cause probable : `buildLegend` (`lib/layout/legend.ts`) ne garde que les classes définies et présentes. La valeur `other` n'a jamais d'entrée « Autres ».
+
+**N3 — Légende réduite à 3,9 pt en A4.** Gravité : important.
+- Symptôme : sur Fatick A4 1/10 000, la légende est écrite en `font-size="1.36"` mm, soit 3,9 pt, illisible à l'impression. Le cadre garde pourtant environ 15 % de blanc en bas.
+- Preuves :
+  - recadrage 2570-3470 × 580-1420 px ;
+  - le PDF est identique ;
+  - les sources du cartouche sont aussi à 3,9 pt.
+- Cause probable : la taille de base est déjà réduite (5,5 pt, avec un facteur de format de 0,75), puis `renderLegend` descend jusqu'à 70 % sur une colonne avant d'essayer deux colonnes. Il faudrait un plancher d'environ 6 pt, et essayer deux colonnes plus tôt.
+
+**N4 — Noms de rues du fond mal posés et sans halo.** Gravité : important.
+- Symptôme : les noms viennent des tuiles OpenFreeMap. Ils sont décalés de 1,5 à 2 mm à côté des voies du site au lieu d'être centrés dessus. Ils n'ont pas de halo visible : en gris moyen, ils se perdent sur le bâti gris foncé et sur les traits des voies.
+- Preuves :
+  - Yoff A3, « Rue Ma Libasse Ndir » posé sur les toits, à côté de la 2×2 voies (recadrage 850-1150 × 650-1050 px) ;
+  - Yoff A1, « Avenue Seydina Limamoulaye » traversé par les chaussées noires (recadrage 5600-7300 × 200-1600 px) ;
+  - Médina 1/2 500, « Avenue Blaise Diagne » collé contre la voie primaire (2050-2550 × 1450-1900 px).
+- Cause probable : le placement est celui du style Positron sur sa propre géométrie (tuiles z14), pas sur la couche voirie du site, et le halo du style est peu visible sur fond clair. Pistes : étiqueter la couche `osm-voirie` elle-même (champ `nom`, halo blanc), ou renforcer le halo des couches `symbol` dans `splitLabels`.
+
+**N5 — Habillage non proportionné aux grands formats.** Gravité : important en A1, mineur en A2.
+- Symptômes, sur Yoff A1 :
+  - points de légende d'environ 1,4 à 1,8 mm, contre 3,7 mm sur la carte ;
+  - traits de voirie de la légende plus fins que sur la carte ;
+  - barre d'échelle de 1,6 mm d'épaisseur sous des chiffres de 14 pt ;
+  - « Situation » en 2,2 mm et point rouge de 2,8 mm de diamètre dans un encart de 170 mm de large ;
+  - étiquettes du fond à leur taille A3, donc presque invisibles à la lecture d'ensemble de l'A1.
+- À l'inverse, en A4 (facteur 0,8), les symboles de voirie de la légende sont plus épais que sur la carte : « Voie primaire » apparaît comme un pavé noir.
+- Le symbole « Emprise du site » en A4 est cassé : deux équerres rouges au lieu d'un rectangle en tirets (recadrage de la légende Fatick A4).
+- Cause probable : `swatchSvg` utilise `PX_MM` au lieu du facteur `PXM` de la mise en page. L'encart et la barre d'échelle ont des tailles fixes en mm. Le fond est rendu avec un rapport de pixels `dpi/96`, sans tenir compte de `symbolScale`.
+
+**N6 — La mer n'est pas représentée.** Gravité : mineur.
+- Symptôme : le fond papier n'a pas d'eau. À Yoff, l'océan, en haut à gauche, est un aplat couleur papier (#f7f5f0), sans bleu, sans trait de côte et sans entrée de légende. On ne le distingue d'une zone non bâtie que par la limite de l'aplat « Habitat ».
+- Preuve : Yoff A3, recadrage 110-1410 × 110-1210 px.
+
+**N7 — Les courbes passent au-dessus du bâti.** Gravité : mineur.
+- Symptôme : la couche « Courbes de niveau » est au-dessus du bâti Google dans la pile par défaut. Les courbes orange traversent les toits (Médina 1/1 000, îlot au sud-est ; Fatick A2, bâtiment administratif au nord-est du rond-point).
+
+**N8 — Mise en page déséquilibrée.** Gravité : mineur.
+- Symptômes :
+  - cartouche vide aux deux tiers ou aux trois quarts sur les 6 planches ;
+  - légende des formats portrait toujours sur une colonne : en Fatick A2, cadre de 159 mm de large pour 60 mm de texte ;
+  - en portrait, flèche du nord et barre d'échelle coincées sous l'encart, avec une barre de 40 mm seulement en A2 ;
+  - grand blanc entre le sous-titre et la carte en paysage (colonne de droite).
+
+**N9 — Rendu du SVG variable selon la machine.** Gravité : mineur.
+- Symptôme : le SVG n'inclut pas de police et se contente de `font-family="Inter, 'Helvetica Neue', Arial"`. Sur ce Mac, où seule Inter SemiBold est installée, Chromium affiche tout le texte courant en demi-gras. Les titres de groupe en gras sont alors à peine distincts : légende et cartouche du rendu Chromium de Fatick A4.
+- Pistes : vectoriser le texte, ou inclure un `@font-face` en base64 dans le SVG.
+
+### Évaluation d'ensemble
+
+Le progrès est net. Les trois bloquants sont levés : mémoire, texte d'éditeur imprimé, cartouche superposé. Les autres acquis :
+- échelle exacte dans les deux directions ;
+- carte vectorielle dans le PDF et le SVG ;
+- plus de doublons ;
+- attributions propres.
+
+Les planches au 1/2 500 et au 1/5 000 en A3 sont présentables.
+
+Pour atteindre un niveau professionnel d'architecte, il manque surtout :
+- la toponymie : noms de rues posés sur les voies avec halo, équipements et quartiers nommés ;
+- une légende complète, avec les catégories « autres » et les courbes dans leur propre groupe ;
+- un habillage proportionné au format : symboles de légende, encart, barre d'échelle, taille minimale du texte en A4 ;
+- un sous-titre qui suit l'échelle ;
+- un encart de situation digne de ce nom.
+
+---
+
+## 1er passage (archive)
+
 Date du contrôle : 04/11/2026. Version contrôlée : build de production servi sur `localhost:3100` (dossier `.next-test`, BUILD_ID `1D90ESNoYPZUJrYQsX7BP`).
 
 Méthode : trois sites créés par l'API, collecte lancée par l'interface (22 couches chacun), puis mises en page réglées dans l'éditeur (format, orientation, échelle) et exportées avec les boutons PNG 300 dpi, PDF et SVG. Chaque image a été ouverte et regardée : vue réduite de la planche entière, puis recadrages à pleine résolution du titre, de la légende, de la barre d'échelle, de la flèche du nord, du cartouche, de l'attribution et de zones denses. Les PDF ont été rastérisés avec `pdftoppm` à 100 et 300 dpi, et les SVG rendus dans Chromium.
@@ -8,7 +168,7 @@ Les mesures sont faites sur les PNG à 300 dpi :
 - **Barre d'échelle** : longueur des segments pleins mesurée en pixels, puis convertie avec `mm = px / 300 × 25,4`.
 - **Échelle réelle de la carte** : les équipements OSM sont des points de couleur unique. Leurs centres ont été retrouvés dans l'image, puis leur distance sur la page a été comparée à leur distance géodésique (pyproj, WGS 84), à la fois pour des paires de points et par composante est-ouest / nord-sud. Les tailles des emprises ont été recalculées à la géodésique : Médina 323,1 × 276,6 m ; Yoff 1 076,8 × 885,2 m ; Fatick 1 294,5 × 995,8 m.
 
-## Incident pendant le contrôle (bloquant)
+### Incident pendant le contrôle (bloquant)
 
 L'export **PNG A1 au 1/2 500** (Yoff) a fait tomber le serveur de production sur le port 3100. Le noyau a tué le processus `next-server` pour manque de mémoire (« Memory cgroup out of memory: Killed process 15046 (next-server) … anon-rss:10339712kB »). À ce moment, un export Fatick tournait en même temps. Les deux exports en cours ont échoué (`ERR_EMPTY_RESPONSE`, puis `ERR_CONNECTION_REFUSED`).
 
@@ -16,7 +176,7 @@ Comme demandé, je n'ai pas redémarré le serveur 3100. Pour terminer les deux 
 
 Cause probable : `app/api/export/png/route.ts` rastérise toute la page d'un coup avec Resvg (9 933 × 7 016 px en RGBA), avec les tuiles PNG en base64 incluses dans le SVG, puis recode l'image avec sharp. Rien ne limite la mémoire ni le nombre d'exports simultanés. Un A0 à 300 dpi, ou deux A1 en même temps, suffit à tuer le serveur.
 
-## Fichiers produits
+### Fichiers produits
 
 | Site | Mise en page | PNG 300 dpi | PDF | SVG |
 |---|---|---|---|---|
@@ -31,7 +191,7 @@ Les dimensions des PNG sont exactes : A4 3 508 × 2 480 ; A3 4 961 × 3 508 ; A2
 
 Couches visibles (réglage par défaut) : emprise, tampon, équipements OSM, courbes de niveau, voirie OSM, bâtiments Google Open Buildings, bâtiments OSM, plans d'eau, cours d'eau, voies ferrées, espaces verts, occupation du sol. Fond « clair » (OpenFreeMap).
 
-## Constats communs à tous les exports
+### Constats communs à tous les exports
 
 Ces défauts reviennent sur toutes les planches. Les fiches par export y renvoient par leur code C1 à C14.
 
@@ -120,7 +280,7 @@ Points conformes partout :
 
 ---
 
-## Médina îlot — A3 paysage 1/1 000 (PNG, PDF, SVG)
+### Médina îlot — A3 paysage 1/1 000 (PNG, PDF, SVG)
 
 **Ce qui va**
 - Barre 0-25-50 m : segment plein de 593 px, soit **50,2 mm** pour 50 mm attendus. L'écart vient du contour.
@@ -140,7 +300,7 @@ Points conformes partout :
 9. Mineur — le texte des sources touche le bord droit du cartouche (C9).
 10. Mineur — SVG : carte en 4 images raster, police non incluse (`font-family` Inter, puis Helvetica ou Arial selon la machine) (C6).
 
-## Médina îlot — A3 portrait 1/2 500 (PNG, PDF)
+### Médina îlot — A3 portrait 1/2 500 (PNG, PDF)
 
 **Ce qui va**
 - Barre 0-50-100 m : 475 px, soit **40,2 mm** pour 40 mm attendus.
@@ -161,7 +321,7 @@ Points conformes partout :
 6. Mineur — carte de situation : le point de Dakar est collé au bord gauche et masque le Cap-Vert (C13).
 7. Important — PDF : carte raster à 200 ppi ; police CID mal déclarée (C6, C7).
 
-## Yoff — A3 paysage 1/5 000 (PNG, PDF)
+### Yoff — A3 paysage 1/5 000 (PNG, PDF)
 
 **Ce qui va**
 - Barre 0-100-200 m : 475 px, soit **40,2 mm** pour 40 mm attendus.
@@ -176,7 +336,7 @@ Points conformes partout :
 5. Mineur — « Zone tampon » en légende alors qu'on n'en voit qu'un fragment pointillé dans l'angle (C11).
 6. Important — PDF : carte raster à 200 ppi ; police CID mal déclarée (C6, C7).
 
-## Yoff — A1 paysage 1/2 500 (PNG, PDF, SVG)
+### Yoff — A1 paysage 1/2 500 (PNG, PDF, SVG)
 
 **Ce qui va**
 - Barre 0-100-200 m : 947 px, soit **80,2 mm** pour 80 mm attendus.
@@ -195,7 +355,7 @@ Points conformes partout :
 6. Important — SVG et PDF : la carte est faite de 9 tuiles raster ; le PDF est à 200 ppi (C6).
 7. Mineur — dans la légende, le symbole de « Zone tampon de 300 m » est presque invisible : pointillé gris très fin.
 
-## Fatick centre — A2 portrait 1/5 000 (PNG, PDF)
+### Fatick centre — A2 portrait 1/5 000 (PNG, PDF)
 
 **Ce qui va**
 - Barre 0-100-200 m : 40 mm attendus, conforme (même gabarit que les autres, mesure à 0,5 px près).
@@ -212,7 +372,7 @@ Points conformes partout :
 6. Mineur — « Courbes de niveau (1 m) » rangé sous « Équipements (OSM) » (C12) ; « Zone tampon de 500 m » hors cadre (C11).
 7. Important — PDF : carte raster à 200 ppi ; police CID mal déclarée (C6, C7).
 
-## Fatick centre — A4 paysage 1/10 000 (PNG, PDF, SVG)
+### Fatick centre — A4 paysage 1/10 000 (PNG, PDF, SVG)
 
 **Ce qui va**
 - Barre 0-250-500 m : 590 px, soit **49,9 mm** pour 50 mm attendus.
@@ -233,7 +393,7 @@ Points conformes partout :
 
 ---
 
-## Synthèse des défauts à corriger, par priorité
+### Synthèse des défauts à corriger, par priorité
 
 **Priorité 1 — bloquants**
 1. **Stabilité de l'export PNG grand format.** 10,4 Go de mémoire pour un A1 à 300 dpi, et serveur tué quand un autre export tourne en même temps. Pistes : rendu par bandes, ou limite en mégapixels avec repli à une résolution plus basse ; file d'attente d'un seul export à la fois ; tuiles du fond non incluses en base64. Fichier : `app/api/export/png/route.ts`.
