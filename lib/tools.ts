@@ -27,7 +27,7 @@ export function toolDrawMode(t: Tool): DrawMode {
     case 'draw-circle':
       return 'circle';
     case 'draw-freehand':
-      return 'freehand-line';
+      return 'freehand-linestring';
     case 'edit':
       return 'select';
     default:
@@ -46,7 +46,10 @@ export function registerTool(t: Tool, h: { finish?: FinishHandler; live?: (f: Fe
   if (h.click) clickHandlers[t] = h.click;
 }
 
+let lastFinish = 0;
+
 export function handleDrawFinish(f: Feature, mode: DrawMode) {
+  lastFinish = Date.now();
   const tool = useStore.getState().tool;
   const h = finishHandlers[tool];
   if (h) h(f, mode, tool);
@@ -58,6 +61,8 @@ export function handleLiveChange(f: Feature | null) {
 }
 
 export function handleMapClick(map: MlMap, e: MapMouseEvent, layerIds: string[]) {
+  // le clic qui termine un dessin ne doit pas aussi (dé)sélectionner
+  if (Date.now() - lastFinish < 400) return;
   const st = useStore.getState();
   const h = clickHandlers[st.tool];
   if (h && h(map, e)) return;

@@ -36,3 +36,12 @@ Chaque ligne : un choix non précisé par la spécification, et la raison.
 - Imagerie haute résolution Esri : activée seulement avec `ARCGIS_API_KEY` (conditions Esri), sans cache disque. Mosaïque EOxCloudless : seulement avec `ENABLE_NONCOMMERCIAL_SOURCES=true` (licence non commerciale).
 - Tuiles OSM standard : affichage à l'écran seulement ; les exports utilisent un fond OpenFreeMap à la place (politique des tuiles OSMF).
 - Tests automatisés sur un build de production isolé (`scripts/test-server.sh`, dossier `.next-test`, port 3100) : le serveur de développement recharge la page à chaque modification de fichier.
+
+## Couches, annotations, mesures (étapes 3-4)
+- Les annotations vont dans une couche « Annotations » (créée au premier dessin) ; chaque objet porte ses propres réglages graphiques (`_color`, `_width`, `_size`…), modifiables après coup. Plusieurs couches d'annotations sont possibles (la couche sélectionnée reçoit les nouveaux dessins).
+- Textes et légendes des repères saisis par une boîte de dialogue simple, modifiables ensuite dans le panneau de droite.
+- Cotations : segment entre le premier et le dernier point, longueur calculée en UTM, texte personnalisable.
+- Découpe d'un polygone : intersection/différence avec le demi-plan à gauche de la ligne de coupe (les deux parties partagent exactement la ligne, donc se refusionnent proprement).
+- Sélection multiple par Maj + clic (même couche) pour la fusion.
+- Rotation et mise à l'échelle par boutons (±5°, ±10 %) en plus du glisser et de l'édition des sommets (Terra Draw).
+- Le clic qui termine un tracé est ignoré par la sélection (400 ms).

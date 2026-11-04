@@ -28,6 +28,8 @@ export default function MapView() {
     });
     mapRef.map = map;
     (window as any).__map = map;
+    (window as any).__store = useStore;
+    (window as any).__draw = () => mapRef.draw;
     installImageHandler(map);
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 140 }), 'bottom-right');

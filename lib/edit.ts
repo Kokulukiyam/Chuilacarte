@@ -109,13 +109,29 @@ export function splitFeatureByLine(target: Feature, cutter: Feature<LineString>)
     return parts.features.length > 1 ? (parts.features as any) : null;
   }
   if (g.type === 'Polygon' || g.type === 'MultiPolygon') {
-    // tampon très fin autour de la ligne de coupe, puis différence
-    const thin = turf.buffer(cutter, 0.02, { units: 'meters' });
-    if (!thin) return null;
-    const diff = turf.difference(turf.featureCollection([target as any, thin as any]));
-    if (!diff) return null;
-    const flat = turf.flatten(diff as any).features;
-    return flat.length > 1 ? (flat as any) : null;
+    // demi-plan à gauche de la ligne de coupe (ligne prolongée + même ligne décalée loin à gauche),
+    // puis intersection / différence : les deux parties partagent exactement la ligne de coupe
+    const cs = cutter.geometry.coordinates;
+    if (cs.length < 2) return null;
+    const bb = turf.bbox(target as any);
+    const span = Math.max(bb[2] - bb[0], bb[3] - bb[1]) * 4 + 0.001;
+    const a = cs[0];
+    const b = cs[cs.length - 1];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const ext = [[a[0] - ux * span, a[1] - uy * span], ...cs, [b[0] + ux * span, b[1] + uy * span]];
+    const nx = -uy * span;
+    const ny = ux * span;
+    const ring = [...ext, ...ext.slice().reverse().map((p) => [p[0] + nx, p[1] + ny]), ext[0]];
+    const half = turf.polygon([ring]);
+    const left = turf.intersect(turf.featureCollection([target as any, half]));
+    const right = turf.difference(turf.featureCollection([target as any, half]));
+    if (!left || !right) return null;
+    const parts = [...turf.flatten(left as any).features, ...turf.flatten(right as any).features];
+    return parts.length > 1 ? (parts as any) : null;
   }
   return null;
 }

@@ -15,7 +15,7 @@ import {
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { Feature } from 'geojson';
 
-export type DrawMode = 'point' | 'linestring' | 'polygon' | 'rectangle' | 'circle' | 'freehand' | 'freehand-line' | 'select' | 'static';
+export type DrawMode = 'point' | 'linestring' | 'polygon' | 'rectangle' | 'circle' | 'freehand' | 'freehand-linestring' | 'select' | 'static';
 
 const ACCENT = '#e11d48';
 
@@ -58,10 +58,18 @@ export class DrawController {
       },
     };
     this.td = new TerraDraw({
-      adapter: new TerraDrawMapLibreGLAdapter({ map: this.map as any }),
+      adapter: new TerraDrawMapLibreGLAdapter({ map: this.map as any, coordinatePrecision: 9 } as any),
+      // nos identifiants d'objets (_fid) ne sont pas des UUID : stratégie d'identifiants souple
+      idStrategy: {
+        isValidId: (id: any) => typeof id === 'string' && id.length > 0,
+        getId: (() => {
+          let n = 0;
+          return () => `td-${Date.now().toString(36)}-${n++}`;
+        })(),
+      },
       modes: [
         new TerraDrawSelectMode({
-          flags: { point: flags, linestring: flags, polygon: flags, rectangle: flags, circle: flags, freehand: flags, 'freehand-line': flags } as any,
+          flags: { point: flags, linestring: flags, polygon: flags, rectangle: flags, circle: flags, freehand: flags, 'freehand-linestring': flags } as any,
           styles: { selectedPolygonColor: '#2563eb' as any, selectedPolygonOutlineColor: '#2563eb' as any, selectedLineStringColor: '#2563eb' as any, selectedPointColor: '#2563eb' as any, selectionPointColor: '#ffffff' as any, selectionPointOutlineColor: '#2563eb' as any, midPointColor: '#2563eb' as any } as any,
         }),
         new TerraDrawPointMode({ styles: { pointColor: ACCENT as any, pointWidth: 6, pointOutlineColor: '#ffffff' as any, pointOutlineWidth: 2 } as any }),
@@ -145,12 +153,13 @@ export class DrawController {
       const t = f.geometry.type;
       return t === 'Point' ? 'point' : t === 'LineString' ? 'linestring' : 'polygon';
     };
+    const round = (c: any): any => (typeof c[0] === 'number' ? [Math.round(c[0] * 1e9) / 1e9, Math.round(c[1] * 1e9) / 1e9] : c.map(round));
     const items = features
       .filter((f) => ['Point', 'LineString', 'Polygon'].includes(f.geometry?.type))
-      .map((f) => ({ id: String(f.properties?._fid), type: 'Feature', geometry: f.geometry, properties: { mode: mode(f) } }));
+      .map((f) => ({ id: String(f.properties?._fid), type: 'Feature', geometry: { type: f.geometry.type, coordinates: round((f.geometry as any).coordinates) }, properties: { mode: mode(f) } }));
     const res = this.td.addFeatures(items as any);
     const bad = res.filter((r: any) => !r.valid);
-    if (bad.length) console.warn('objets non éditables', bad.length);
+    if (bad.length) console.warn('objets non éditables', bad.map((b: any) => b.reason).join(', '));
     this.setMode('select');
     if (items.length === 1) {
       try {
