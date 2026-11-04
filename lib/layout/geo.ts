@@ -29,23 +29,43 @@ export function mapFrame(l: Layout) {
 }
 
 /**
- * Projection du cadre de carte : Web Mercator, échelle vraie au centre.
- * mm papier = mètres terrain × 1000 / échelle ; mètres terrain = mètres Mercator × cos(lat0).
+ * Rapports « mètres terrain (ellipsoïde WGS 84) / mètres Web Mercator » au voisinage d'une latitude,
+ * séparément est-ouest et nord-sud : Web Mercator est calculé sur une sphère, ce qui fausse le nord-sud
+ * d'environ 0,6 % sous les tropiques si on l'ignore.
+ */
+export function groundPerMerc(lat: number) {
+  const a = 6378137;
+  const e2 = 0.00669437999014;
+  const phi = (lat * Math.PI) / 180;
+  const s2 = Math.sin(phi) ** 2;
+  const N = a / Math.sqrt(1 - e2 * s2); // rayon de courbure transverse
+  const M = (a * (1 - e2)) / (1 - e2 * s2) ** 1.5; // rayon de courbure méridien
+  const c = Math.cos(phi);
+  return { ex: (N * c) / R, ny: (M * c) / R };
+}
+
+/**
+ * Projection du cadre de carte : Web Mercator (comme le fond), avec des facteurs d'échelle est-ouest et nord-sud
+ * calculés sur l'ellipsoïde au centre du cadre : les distances terrain sont exactes dans les deux directions.
+ * mm papier = mètres terrain × 1000 / échelle.
  */
 export function makeProjector(l: Layout) {
   const f = mapFrame(l);
   const [lon0, lat0] = l.center;
   const cx = mercX(lon0);
   const cy = mercY(lat0);
-  const k = (Math.cos((lat0 * Math.PI) / 180) * 1000) / l.scale; // mm par mètre Mercator
+  const g = groundPerMerc(lat0);
+  const kx = (g.ex * 1000) / l.scale; // mm par mètre Mercator, est-ouest
+  const ky = (g.ny * 1000) / l.scale; // mm par mètre Mercator, nord-sud
+  const k = kx;
   const th = ((l.bearing || 0) * Math.PI) / 180;
   const cos = Math.cos(th);
   const sin = Math.sin(th);
   const ox = f.x + f.w / 2;
   const oy = f.y + f.h / 2;
   const project = (lon: number, lat: number): [number, number] => {
-    const dx = (mercX(lon) - cx) * k;
-    const dy = (mercY(lat) - cy) * k;
+    const dx = (mercX(lon) - cx) * kx;
+    const dy = (mercY(lat) - cy) * ky;
     // rotation de la carte (bearing) : le nord tourne de -bearing
     return [ox + dx * cos - dy * sin, oy - (dx * sin + dy * cos)];
   };
@@ -54,7 +74,7 @@ export function makeProjector(l: Layout) {
     const ry = -(y - oy);
     const dx = rx * cos + ry * sin;
     const dy = -rx * sin + ry * cos;
-    return invMerc(cx + dx / k, cy + dy / k);
+    return invMerc(cx + dx / kx, cy + dy / ky);
   };
   /** emprise géographique couverte par le cadre (avec marge) */
   const bounds = (pad = 0): [number, number, number, number] => {
@@ -68,7 +88,7 @@ export function makeProjector(l: Layout) {
   };
   /** mètres terrain représentés par 1 mm papier */
   const metersPerMm = l.scale / 1000;
-  return { project, unproject, bounds, frame: f, k, metersPerMm };
+  return { project, unproject, bounds, frame: f, k, kx, ky, metersPerMm };
 }
 
 /** Échelle « ronde » qui fait tenir une emprise dans le cadre. */
@@ -82,10 +102,16 @@ export function fitScale(l: Layout, bbox: [number, number, number, number]): num
   return SCALES.find((s) => s >= need) || Math.ceil(need / 10000) * 10000;
 }
 
-/** Zoom MapLibre équivalent (pixels CSS) pour une échelle donnée à une latitude. */
+/** Zoom MapLibre équivalent (pixels CSS) pour une échelle donnée à une latitude (calé sur l'est-ouest). */
 export function zoomForScale(scale: number, lat: number) {
   // mètres Mercator par pixel CSS au zoom z : 2πR / (512 · 2^z)
   const groundPerPx = (scale * PX_MM) / 1000; // m terrain par px CSS
-  const mercPerPx = groundPerPx / Math.cos((lat * Math.PI) / 180);
+  const mercPerPx = groundPerPx / groundPerMerc(lat).ex;
   return Math.log2((2 * Math.PI * R) / (512 * mercPerPx));
+}
+
+/** Allongement vertical à appliquer aux images du fond (pixels carrés en Web Mercator). */
+export function verticalStretch(lat: number) {
+  const g = groundPerMerc(lat);
+  return g.ny / g.ex;
 }

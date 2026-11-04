@@ -13,6 +13,8 @@ import { handleDrawFinish, handleMapClick, handleLiveChange, toolDrawMode } from
 import { syncOverlays, overlaySubscribe } from '@/lib/overlays';
 import { startVertexEdit } from '@/lib/edit';
 
+let firstLabel: string | undefined;
+
 export default function MapView() {
   const el = useRef<HTMLDivElement>(null);
   const styleKey = useRef<string>('');
@@ -45,10 +47,11 @@ export default function MapView() {
       // le style vide initial est aussitôt remplacé : on attend le vrai fond (marqué par applyBase)
       if (!(map.getStyle()?.metadata as any)?.chuilacarte) return;
       resetApplied(map);
+      firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol' && !/^(lyr-|sel-|ov-|relief-)/.test(l.id))?.id;
       ensureSelectionLayers(map);
       const s = useStore.getState();
       if (s.site) {
-        syncLayers(map, s.site, s.data, { mode3d: s.mode3d, beforeId: 'sel-fill' });
+        syncLayers(map, s.site, s.data, { mode3d: s.mode3d, beforeId: 'sel-fill', beforeLabels: firstLabel });
         syncOverlays(map);
       }
       if (!draw.current) {
@@ -91,7 +94,7 @@ export default function MapView() {
       }
       if (s.site.layers !== prev.site?.layers || s.data !== prev.data || s.mode3d !== prev.mode3d || s.site.settings !== prev.site?.settings) {
         if (map.getSource('sel')) {
-          syncLayers(map, s.site, s.data, { mode3d: s.mode3d, beforeId: 'sel-fill' });
+          syncLayers(map, s.site, s.data, { mode3d: s.mode3d, beforeId: 'sel-fill', beforeLabels: firstLabel });
           syncOverlays(map);
         }
       }

@@ -16,14 +16,18 @@ describe('mise en page', () => {
       const l = newLayout(site, { scale });
       const pr = makeProjector(l);
       const o = toUtm(site.utm, site.center);
-      const a = fromUtm(site.utm, [o[0] - 50, o[1]]);
-      const b = fromUtm(site.utm, [o[0] + 50, o[1]]);
-      const pa = pr.project(a[0], a[1]);
-      const pb = pr.project(b[0], b[1]);
-      const mm = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]);
-      // tolérance 0,5 % (facteur d'échelle UTM ≈ 0,9997 à Dakar + approximation sphérique)
-      expect(mm).toBeGreaterThan((100000 / scale) * 0.995);
-      expect(mm).toBeLessThan((100000 / scale) * 1.005);
+      // est-ouest et nord-sud : 100 m terrain (UTM, facteur d'échelle local ≈ 0,9997 à Dakar)
+      for (const [dx, dy] of [[100, 0], [0, 100]]) {
+        const a = fromUtm(site.utm, [o[0] - dx / 2, o[1] - dy / 2]);
+        const b = fromUtm(site.utm, [o[0] + dx / 2, o[1] + dy / 2]);
+        const pa = pr.project(a[0], a[1]);
+        const pb = pr.project(b[0], b[1]);
+        const mm = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]);
+        // 100 m en UTM = 100 / k m terrain, k = facteur d’échelle UTM local (≈ 1,00046 à 236 km du méridien central) ; tolérance 0,03 %
+        const k = 0.9996 * (1 + (o[0] - 500000) ** 2 / (2 * 6378137 ** 2));
+        const expected = 100000 / k / scale;
+        expect(Math.abs(mm / expected - 1)).toBeLessThan(0.0003);
+      }
     }
   });
   it('barre d’échelle ronde et exacte', () => {
@@ -45,8 +49,11 @@ describe('mise en page', () => {
     expect(svg).toContain('id="fleche-nord"');
     expect(svg).toContain('id="legende"');
     expect(svg).toContain('id="cartouche"');
-    expect(svg).toContain('id="attribution"');
+    // sources dans le cartouche ; sans cartouche, elles sont écrites dans le cadre de carte
+    expect(svg).toContain('Sources :');
     expect(attributions.length).toBeGreaterThan(0);
+    const sans = renderLayoutSvg({ layout: { ...l, elements: l.elements.filter((e) => e.type !== 'cartouche') }, site, data }).svg;
+    expect(sans).toContain('id="attribution"');
     expect(svg).not.toContain('paint-order');
   });
   it('zoom MapLibre cohérent avec l’échelle', () => {

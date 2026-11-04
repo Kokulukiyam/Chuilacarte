@@ -152,6 +152,8 @@ export interface Layout {
   bearing: number;
   basemap: string;
   font: string;
+  /** facteur appliqué aux épaisseurs, symboles et étiquettes de la carte (grands formats vus de plus loin) */
+  symbolScale?: number;
   elements: LayoutElement[];
   /** cadre de carte, en mm ; par défaut toute la page moins les marges */
   mapFrame?: { x: number; y: number; w: number; h: number };

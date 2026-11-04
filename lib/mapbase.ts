@@ -50,14 +50,18 @@ export interface BaseOptions {
 export async function buildBaseStyle(o: BaseOptions): Promise<StyleSpecification> {
   const def = basemapById(o.basemap);
   let style: StyleSpecification;
-  if (def.kind === 'vector') {
+  if (def.kind === 'vector' || def.kind === 'labels') {
     try {
       style = await fetchStyle(def.styleUrl!);
       style.glyphs = style.glyphs || GLYPHS;
       if (o.noLabels) style.layers = style.layers.filter((l) => l.type !== 'symbol');
+      if (def.kind === 'labels') {
+        // fond papier : seulement les noms (rues, quartiers, lieux), sans dessin de voirie ni de bâti
+        style.layers = [{ id: 'bm-background', type: 'background', paint: { 'background-color': def.background! } }, ...style.layers.filter((l) => l.type === 'symbol' && !/shield|oneway|poi/i.test(l.id))];
+      }
     } catch {
       // hors ligne : fond uni
-      style = plainStyle(def.dark ? '#18181b' : '#f4f4f5');
+      style = plainStyle(def.dark ? '#18181b' : def.background || '#f4f4f5');
     }
   } else if (def.kind === 'raster') {
     style = rasterStyle(def.tiles!, def.attribution);
@@ -134,6 +138,16 @@ export function sentinelForSite(site: Site): BaseOptions['sentinelUrl'] {
   const l = site.layers.find((x) => x.raster?.type === 'image' && x.source.name.startsWith('Sentinel-2') && x.raster.bounds);
   if (!l) return null;
   return { url: `/api/sites/${site.slug}/${l.raster!.url}`, bounds: l.raster!.bounds! };
+}
+
+/** Sépare un style en « fond sans étiquettes » et « étiquettes seules » (fond transparent). */
+export function splitLabels(style: StyleSpecification): { base: StyleSpecification; labels: StyleSpecification | null } {
+  const sym = style.layers.filter((l) => l.type === 'symbol' && !String(l.id).startsWith('x-'));
+  if (!sym.length) return { base: style, labels: null };
+  const base = { ...style, layers: style.layers.filter((l) => !sym.includes(l)) };
+  const used = new Set(sym.map((l: any) => l.source));
+  const labels = { ...style, sources: Object.fromEntries(Object.entries(style.sources).filter(([k]) => used.has(k))), layers: sym };
+  return { base, labels };
 }
 
 export function attributionFor(basemap: string) {

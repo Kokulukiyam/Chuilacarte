@@ -32,7 +32,7 @@ export async function buildLayoutSvg(layout: Layout, site: Site, data: Record<st
   o.onProgress?.('Rendu du fond de carte…');
   const bm = await renderBasemap(layout, site, { dpi: o.dpi, data, onProgress: (d, t) => o.onProgress?.(`Rendu du fond de carte… ${d}/${t}`) });
   const inset = layout.elements.some((e) => e.type === 'inset') ? await fetchInset(site) : undefined;
-  const r = renderLayoutSvg({ layout, site, data, basemap: bm.tiles, background: bm.background, inset, basemapUsed: bm.used });
+  const r = renderLayoutSvg({ layout, site, data, basemap: bm.tiles, basemapLabels: bm.labelTiles, background: bm.background, inset, basemapUsed: bm.used });
   return { svg: r.svg, attributions: r.attributions, note: bm.note, legendOverflow: r.legendOverflow, basemapDpi: Math.round(bm.dpi) };
 }
 
@@ -117,7 +117,7 @@ export async function svgToPdf(svg: string, layout: Layout): Promise<Blob> {
 }
 
 export async function svgToPng(svg: string, layout: Layout, dpi: number): Promise<Blob> {
-  const r = await fetch(`/api/export/png?dpi=${dpi}&widthMm=${layout.width}`, { method: 'POST', body: svg, headers: { 'content-type': 'image/svg+xml' } });
+  const r = await fetch(`/api/export/png?dpi=${dpi}&widthMm=${layout.width}&heightMm=${layout.height}`, { method: 'POST', body: svg, headers: { 'content-type': 'image/svg+xml' } });
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `PNG : HTTP ${r.status}`);
   return r.blob();
 }

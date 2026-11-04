@@ -1,14 +1,15 @@
 'use client';
 import maplibregl, { type StyleSpecification } from 'maplibre-gl';
 import { basemapById, absUrl } from '../basemaps';
-import { buildBaseStyle, sentinelForSite } from '../mapbase';
+import { buildBaseStyle, sentinelForSite, splitLabels } from '../mapbase';
 import type { FC, Layout, Site } from '../types';
 import { heatmapSpec } from '../maplayers';
-import { makeProjector, PX_MM, zoomForScale } from './geo';
+import { makeProjector, PX_MM, verticalStretch, zoomForScale } from './geo';
 import type { BasemapTile } from './svg';
 
 export interface BasemapRender {
   tiles: BasemapTile[];
+  labelTiles?: BasemapTile[];
   background?: string;
   used: string;
   note?: string;
@@ -78,11 +79,14 @@ function waitIdle(map: maplibregl.Map, timeout = 45000) {
 export async function renderBasemap(layout: Layout, site: Site, o: { dpi: number; maxMegapixels?: number; data?: Record<string, FC>; onProgress?: (done: number, total: number) => void }): Promise<BasemapRender> {
   const { id: used, note } = exportBasemap(layout.basemap);
   const def = basemapById(used);
-  const style = await siteRasterStyle(await buildBaseStyle({ basemap: used, hillshade: site.overlays?.hillshade, contours: site.overlays?.contours, sentinelUrl: sentinelForSite(site) }), site, o.data);
+  const full = await siteRasterStyle(await buildBaseStyle({ basemap: used, hillshade: site.overlays?.hillshade, contours: site.overlays?.contours, sentinelUrl: sentinelForSite(site) }), site, o.data);
+  // étiquettes du fond rendues à part, pour être posées au-dessus des couches du site
+  const { base: style, labels: labelStyle } = splitLabels(full);
   const pr0 = makeProjector(layout);
   const f = pr0.frame;
   const onlyBackground = style.layers.length === 1 && style.layers[0].type === 'background';
-  if (onlyBackground) return { tiles: [], background: (style.layers[0] as any).paint?.['background-color'] || def.background, used, note, dpi: o.dpi };
+  const background = onlyBackground ? (style.layers[0] as any).paint?.['background-color'] || def.background : undefined;
+  if (onlyBackground && !labelStyle) return { tiles: [], background, used, note, dpi: o.dpi };
   // résolution du fond limitée (mémoire) ; les vecteurs du site restent nets
   const areaIn2 = (f.w / 25.4) * (f.h / 25.4);
   const maxMp = o.maxMegapixels ?? 64;
@@ -91,9 +95,11 @@ export async function renderBasemap(layout: Layout, site: Site, o: { dpi: number
   const devChunk = 2048;
   const cssChunk = Math.floor(devChunk / pr);
   const chunkMm = cssChunk * PX_MM;
+  const vs = verticalStretch(layout.center[1]); // ~0,994 sous les tropiques
+  const chunkMmY = chunkMm * vs;
   const rotated = Math.abs(layout.bearing || 0) > 0.01;
   const cols = rotated ? 1 : Math.ceil(f.w / chunkMm);
-  const rows = rotated ? 1 : Math.ceil(f.h / chunkMm);
+  const rows = rotated ? 1 : Math.ceil(f.h / chunkMmY);
   const cssW = rotated ? Math.ceil(f.w / PX_MM) : cssChunk;
   const cssH = rotated ? Math.ceil(f.h / PX_MM) : cssChunk;
   const div = document.createElement('div');
@@ -116,26 +122,36 @@ export async function renderBasemap(layout: Layout, site: Site, o: { dpi: number
     /* une tuile manquante ne doit pas bloquer l'export */
   });
   const tiles: BasemapTile[] = [];
+  const labelTiles: BasemapTile[] = [];
   const jpeg = def.kind === 'raster' || def.kind === 'sentinel';
   try {
     await new Promise<void>((res) => map.once('load', () => res()));
     let n = 0;
+    const passes: { style: StyleSpecification; out: BasemapTile[]; jpeg: boolean }[] = [];
+    if (!onlyBackground) passes.push({ style, out: tiles, jpeg });
+    if (labelStyle) passes.push({ style: labelStyle, out: labelTiles, jpeg: false });
+    for (const pass of passes) {
+      if (pass.style !== style || onlyBackground) {
+        map.setStyle(pass.style, { diff: false });
+        await new Promise<void>((res) => (map.isStyleLoaded() ? res() : map.once('style.load', () => res())));
+      }
     for (let j = 0; j < rows; j++)
       for (let i = 0; i < cols; i++) {
         const x = rotated ? f.x : f.x + i * chunkMm;
-        const y = rotated ? f.y : f.y + j * chunkMm;
+        const y = rotated ? f.y : f.y + j * chunkMmY;
         const w = rotated ? f.w : chunkMm;
-        const h = rotated ? f.h : chunkMm;
+        const h = rotated ? f.h : chunkMmY;
         const c = pr0.unproject(x + w / 2, y + h / 2);
         map.jumpTo({ center: c, zoom, bearing: layout.bearing || 0 });
         await waitIdle(map);
-        const href = map.getCanvas().toDataURL(jpeg ? 'image/jpeg' : 'image/png', 0.9);
-        tiles.push({ href, x, y, w: rotated ? cssW * PX_MM : w, h: rotated ? cssH * PX_MM : h });
-        o.onProgress?.(++n, rows * cols);
+        const href = map.getCanvas().toDataURL(pass.jpeg ? 'image/jpeg' : 'image/png', 0.9);
+        pass.out.push({ href, x: rotated ? f.x + (f.w - cssW * PX_MM) / 2 : x, y: rotated ? f.y + (f.h - cssH * PX_MM * vs) / 2 : y, w: rotated ? cssW * PX_MM : w, h: rotated ? cssH * PX_MM * vs : h });
+        o.onProgress?.(++n, rows * cols * passes.length);
       }
+    }
   } finally {
     map.remove();
     div.remove();
   }
-  return { tiles, used, note, dpi };
+  return { tiles, labelTiles, background, used, note, dpi };
 }

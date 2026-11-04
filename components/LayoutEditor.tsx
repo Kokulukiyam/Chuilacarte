@@ -118,7 +118,7 @@ export default function LayoutEditor() {
   const preview = useMemo(() => {
     if (!layout) return null;
     // pendant un glisser du cadre, la carte suit par une translation CSS (plus fluide)
-    return renderLayoutSvg({ layout, site, data, basemap: bm?.tiles, background: bm?.background, inset, basemapUsed: bm?.used, editor: true, selectedElement: sel });
+    return renderLayoutSvg({ layout, site, data, basemap: bm?.tiles, basemapLabels: bm?.labelTiles, background: bm?.background, inset, basemapUsed: bm?.used, editor: true, selectedElement: sel });
   }, [layout, site, data, bm, inset, sel]);
 
   if (!layout) return <div className="flex flex-1 items-center justify-center text-zinc-500">Préparation de la mise en page…</div>;
@@ -195,7 +195,7 @@ export default function LayoutEditor() {
         }
       }
     }
-    if (drag.el !== '__map' || drag.handle === 'se') liveSvg = renderLayoutSvg({ layout: tmp, site, data, basemap: bm?.tiles, background: bm?.background, inset, basemapUsed: bm?.used, editor: true, selectedElement: sel }).svg;
+    if (drag.el !== '__map' || drag.handle === 'se') liveSvg = renderLayoutSvg({ layout: tmp, site, data, basemap: bm?.tiles, basemapLabels: bm?.labelTiles, background: bm?.background, inset, basemapUsed: bm?.used, editor: true, selectedElement: sel }).svg;
     else liveSvg = preview.svg.replace('<g id="carte" clip-path="url(#cadre)">', `<g clip-path="url(#cadre)"><g id="carte" transform="translate(${drag.dx} ${drag.dy})">`).replace('<rect id="cadre-carte"', '</g><rect id="cadre-carte"');
   }
 

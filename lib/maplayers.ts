@@ -418,7 +418,15 @@ function sourceSpec(layer: Layer, slug: string, fc: FC | undefined): any {
 }
 
 /** Synchronise la carte avec les couches du site (idempotent). */
-export function syncLayers(map: MlMap, site: Site, data: Record<string, FC>, o: { mode3d: boolean; beforeId?: string }) {
+const BELOW_LABELS = new Set(['fill', 'line', 'raster', 'heatmap']);
+
+/** Les surfaces et lignes du site passent sous les noms du fond ; points, textes et volumes restent au-dessus. */
+function targetBefore(map: MlMap, spec: { type: string }, o: { beforeId?: string; beforeLabels?: string }) {
+  if (o.beforeLabels && BELOW_LABELS.has(spec.type) && map.getLayer(o.beforeLabels)) return o.beforeLabels;
+  return o.beforeId && map.getLayer(o.beforeId) ? o.beforeId : undefined;
+}
+
+export function syncLayers(map: MlMap, site: Site, data: Record<string, FC>, o: { mode3d: boolean; beforeId?: string; beforeLabels?: string }) {
   let st = applied.get(map);
   if (!st) {
     st = new Map();
@@ -460,7 +468,7 @@ export function syncLayers(map: MlMap, site: Site, data: Record<string, FC>, o: 
     if (!rec || rec.styleKey !== styleKey || rec.specIds.some((id) => !map.getLayer(id))) {
       if (rec) for (const lid of rec.specIds) if (map.getLayer(lid)) map.removeLayer(lid);
       const specs = layerSpecs(layer, opts);
-      for (const sp of specs) map.addLayer(sp, o.beforeId && map.getLayer(o.beforeId) ? o.beforeId : undefined);
+      for (const sp of specs) map.addLayer(sp, targetBefore(map, sp, o));
       st.set(layer.id, { styleKey, data: fc, specIds: specs.map((x) => x.id) });
     } else {
       rec.data = fc;
@@ -470,7 +478,10 @@ export function syncLayers(map: MlMap, site: Site, data: Record<string, FC>, o: 
   for (const layer of ordered) {
     const rec = st.get(layer.id);
     if (!rec) continue;
-    for (const lid of rec.specIds) if (map.getLayer(lid)) map.moveLayer(lid, o.beforeId && map.getLayer(o.beforeId) ? o.beforeId : undefined);
+    for (const lid of rec.specIds) {
+      const ly = map.getLayer(lid);
+      if (ly) map.moveLayer(lid, targetBefore(map, ly as any, o));
+    }
   }
 }
 

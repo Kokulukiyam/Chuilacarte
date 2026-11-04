@@ -23,7 +23,30 @@ export interface LegendGroup {
 const fmt = (v: number) => (Math.abs(v) >= 100 ? Math.round(v).toLocaleString('fr-FR') : v.toLocaleString('fr-FR', { maximumFractionDigits: 1 }));
 
 /** Légende générée à partir des couches visibles (ordre de la pile, du haut vers le bas). */
-export function buildLegend(site: Site, data: Record<string, FC>, opts: { hidden?: string[]; labels?: Record<string, string> } = {}): LegendGroup[] {
+function inView(fc: FC, b: number[]) {
+  for (const f of fc.features) {
+    if (!f.geometry) continue;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const v = (c: any) => {
+      if (typeof c[0] === 'number') {
+        x0 = Math.min(x0, c[0]);
+        x1 = Math.max(x1, c[0]);
+        y0 = Math.min(y0, c[1]);
+        y1 = Math.max(y1, c[1]);
+      } else c.forEach(v);
+    };
+    v((f.geometry as any).coordinates ?? []);
+    if (!(x1 < b[0] || x0 > b[2] || y1 < b[1] || y0 > b[3])) {
+      // un polygone qui englobe tout le cadre (zone tampon) ne compte que si son contour y passe
+      if (/Polygon/.test(f.geometry.type) && x0 < b[0] && x1 > b[2] && y0 < b[1] && y1 > b[3]) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Légende générée à partir des couches visibles (ordre de la pile, du haut vers le bas) ; `bbox` : seulement ce qui est dans le cadre. */
+export function buildLegend(site: Site, data: Record<string, FC>, opts: { hidden?: string[]; labels?: Record<string, string>; bbox?: number[] } = {}): LegendGroup[] {
   const groups: LegendGroup[] = [];
   const hidden = new Set(opts.hidden || []);
   for (const l of site.layers) {
@@ -35,6 +58,7 @@ export function buildLegend(site: Site, data: Record<string, FC>, opts: { hidden
     }
     const fc = data[l.id];
     if (!fc || !fc.features.length) continue;
+    if (opts.bbox && !inView(fc, opts.bbox)) continue;
     if (l.role === 'annotations') {
       const marks = markerLegend(fc);
       if (marks.length) groups.push({ layerId: l.id, title: label === 'Annotations' ? 'Repères' : label, items: marks.map((m) => ({ label: m.text || `Repère ${m.num}`, swatch: { kind: 'marker', color: m.color, num: m.num } })) });

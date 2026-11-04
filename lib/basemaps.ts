@@ -8,7 +8,7 @@ export interface BasemapDef {
   id: string;
   label: string;
   /** 'vector' : style distant ; 'raster' : tuiles relayées ; 'plain' : fond uni */
-  kind: 'vector' | 'raster' | 'plain' | 'sentinel' | 'relief';
+  kind: 'vector' | 'raster' | 'plain' | 'sentinel' | 'relief' | 'labels';
   styleUrl?: string;
   tiles?: string;
   background?: string;
@@ -88,6 +88,15 @@ export const BASEMAPS: BasemapDef[] = [
     background: '#f6f4ef',
     attribution: 'Relief : Terrain Tiles (Mapzen/Tilezen, AWS Open Data) — SRTM : USGS ; ETOPO1 : NOAA',
     xyz: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+  },
+  {
+    id: 'papier-noms',
+    label: 'Papier + noms de rues',
+    kind: 'labels',
+    styleUrl: 'https://tiles.openfreemap.org/styles/positron',
+    background: '#f7f5f0',
+    attribution: '© OpenFreeMap, © OpenMapTiles, données © les contributeurs d’OpenStreetMap',
+    xyz: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   },
   {
     id: 'papier',

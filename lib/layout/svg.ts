@@ -24,6 +24,8 @@ export interface RenderCtx {
   site: Site;
   data: Record<string, FC>;
   basemap?: BasemapTile[];
+  /** étiquettes du fond (noms de rues…), posées au-dessus des couches du site */
+  basemapLabels?: BasemapTile[];
   /** contour du pays et des régions pour l'encart de situation */
   inset?: { country?: FC; regions?: FC };
   /** attributions supplémentaires */
@@ -64,8 +66,25 @@ function fontAttr(font: string) {
   return `font-family="${esc(FONT_STACKS[font] || FONT_STACKS.Inter)}"`;
 }
 
-/** Largeur approximative d'un texte (mm) — suffisante pour la mise en place et l'évitement. */
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+let measureFont = 'Inter';
+export function setMeasureFont(f: string) {
+  measureFont = f;
+}
+
+/** Largeur d'un texte (mm) : mesurée avec la vraie police dans le navigateur, estimée sinon. */
 export function textWidth(s: string, sizeMm: number, bold = false) {
+  if (measureCtx === undefined) {
+    try {
+      measureCtx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+    } catch {
+      measureCtx = null;
+    }
+  }
+  if (measureCtx) {
+    measureCtx.font = `${bold ? 700 : 400} 100px ${FONT_STACKS[measureFont] || FONT_STACKS.Inter}`;
+    return (measureCtx.measureText(s).width / 100) * sizeMm * 1.02;
+  }
   let w = 0;
   for (const ch of s) w += /[il.,;:'|!]/.test(ch) ? 0.28 : /[mwMW@]/.test(ch) ? 0.82 : /[A-Z0-9]/.test(ch) ? 0.64 : ch === ' ' ? 0.28 : 0.53;
   return w * sizeMm * (bold ? 1.06 : 1);
@@ -188,6 +207,8 @@ interface LabelBox {
 }
 
 // ------------------------------------------------------------------ couches
+let PXM = PX_MM; // mm papier par pixel de style, multiplié par le facteur de symboles de la mise en page
+
 function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [number, number], view: number[], defs: string[], labels: string[], placed: LabelBox[], site: Site, font: string): string {
   const s = l.style;
   const out: string[] = [];
@@ -212,14 +233,14 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
     if (!d) continue;
     if (/Polygon/.test(g.type)) {
       const fill = featureColor(s, props, 'fill');
-      const sw = s.strokeWidth * PX_MM;
+      const sw = s.strokeWidth * PXM;
       out.push(
         `<path d="${d}" fill="${s.fillOpacity > 0 ? fill : 'none'}"${s.fillOpacity > 0 && s.fillOpacity * op < 1 ? ` fill-opacity="${n2(s.fillOpacity * op)}"` : ''} fill-rule="evenodd"${sw > 0 ? ` stroke="${s.stroke}" stroke-width="${n2(sw)}" stroke-linejoin="round"${s.strokeOpacity * op < 1 ? ` stroke-opacity="${n2(s.strokeOpacity * op)}"` : ''}${dashAttr(s.dash, sw)}` : ''}/>`,
       );
       if (hatchId) out.push(`<path d="${d}" fill="url(#${hatchId})" fill-rule="evenodd"${op < 1 ? ` opacity="${n2(op)}"` : ''}/>`);
     } else {
       const col = featureColor(s, props, 'stroke');
-      const sw = featureWidth(s, props) * PX_MM;
+      const sw = featureWidth(s, props) * PXM;
       out.push(`<path d="${d}" fill="none" stroke="${col}" stroke-width="${n2(sw)}" stroke-linejoin="round" stroke-linecap="${s.dash === 'solid' ? 'round' : 'butt'}"${s.strokeOpacity * op < 1 ? ` stroke-opacity="${n2(s.strokeOpacity * op)}"` : ''}${dashAttr(s.dash, sw)}/>`);
     }
   }
@@ -228,13 +249,13 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
     const cs: Position[] = g.type === 'Point' ? [g.coordinates] : g.coordinates;
     for (const c of cs) {
       const [x, y] = P(c[0], c[1]);
-      out.push(shapeSvg(s.pointShape, x, y, s.pointSize * PX_MM, featureColor(s, f.properties || {}, 'fill'), s.stroke, s.strokeWidth * PX_MM, s.fillOpacity * op));
+      out.push(shapeSvg(s.pointShape, x, y, s.pointSize * PXM, featureColor(s, f.properties || {}, 'fill'), s.stroke, s.strokeWidth * PXM, s.fillOpacity * op));
     }
   }
   // étiquettes, avec évitement simple des chevauchements
   if (s.label?.field) {
     const lab = s.label;
-    const size = lab.size * PX_MM;
+    const size = lab.size * PXM;
     const bold = lab.weight === 'bold';
     for (const f of fc.features) {
       const g = f.geometry;
@@ -244,7 +265,7 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
       let x: number, y: number, rot = 0;
       if (g.type === 'Point') {
         [x, y] = P(g.coordinates[0], g.coordinates[1]);
-        y += s.pointSize * PX_MM * 0.6 + size;
+        y += s.pointSize * PXM * 0.6 + size;
       } else if (/LineString/.test(g.type)) {
         const line: Position[] = g.type === "LineString" ? g.coordinates : (g as any).coordinates.reduce((a: Position[], b: Position[]) => (b.length > a.length ? b : a), [] as Position[]);
         if (line.length < 2) continue;
@@ -297,7 +318,7 @@ function renderAnnotations(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
     const g = f.geometry;
     if (!g) continue;
     const color = p._color || '#dc2626';
-    const w = (p._width ?? 2) * PX_MM;
+    const w = (p._width ?? 2) * PXM;
     const kind = p._kind;
     if (/Polygon/.test(g.type)) {
       out.push(`<path d="${pathOf(g, P)}" fill="${p._fill || color}" fill-opacity="${n2(p._fillOpacity ?? 0.12)}" stroke="${color}" stroke-width="${n2(w)}" stroke-linejoin="round"/>`);
@@ -322,13 +343,13 @@ function renderAnnotations(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
         if (deg < -90) deg += 180;
         const mx = (a[0] + b[0]) / 2;
         const my = (a[1] + b[1]) / 2;
-        const size = (p._size || 12) * PX_MM;
+        const size = (p._size || 12) * PXM;
         const txt = p._text || fmtLength(metricLength(site.utm, g));
         out.push(haloText(`x="${n2(mx)}" y="${n2(my - 0.8)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="700" fill="${color}" text-anchor="middle" transform="rotate(${n2(deg)} ${n2(mx)} ${n2(my)})"`, esc(txt), '#ffffff', size * 0.2));
       }
     } else if (g.type === 'Point') {
       const [x, y] = P(g.coordinates[0], g.coordinates[1]);
-      const size = (p._size || 16) * PX_MM;
+      const size = (p._size || 16) * PXM;
       if (kind === 'text') {
         const lines = String(p._text || '').split('\n');
         const rot = p._rotation ? ` transform="rotate(${n2(p._rotation)} ${n2(x)} ${n2(y)})"` : '';
@@ -384,13 +405,33 @@ export interface LegendLayoutResult {
   overflow: boolean;
 }
 
-function renderLegend(el: LayoutElement, groups: LegendGroup[], font: string, defs: string[]): LegendLayoutResult {
+function renderLegend(el: LayoutElement, groups: LegendGroup[], font: string, defs: string[], editor = false): LegendLayoutResult {
+  // la légende se réduit (jusqu'à 70 %) puis passe sur plus de colonnes avant de signaler un débordement
+  const base = el.props.size || 8;
+  const cols0 = Math.max(1, el.props.columns || 1);
+  const tries: [number, number][] = [];
+  for (const c of [cols0, cols0 + 1]) for (const f of [1, 0.92, 0.85, 0.78, 0.7]) tries.push([base * f, c]);
+  for (const [sz, c] of tries) {
+    const d: string[] = [];
+    const r = legendAt(el, groups, font, d, sz, c, editor);
+    if (!r.overflow) {
+      defs.push(...d);
+      return r;
+    }
+  }
+  const d: string[] = [];
+  const r = legendAt(el, groups, font, d, base * 0.7, cols0 + 1, editor);
+  defs.push(...d);
+  return r;
+}
+
+function legendAt(el: LayoutElement, groups: LegendGroup[], font: string, defs: string[], sizePt: number, columns: number, editor: boolean): LegendLayoutResult {
   const p = el.props;
-  const size = (p.size || 8) * PT;
+  const size = sizePt * PT;
   const lh = size * 1.55;
   const sw = size * 1.9;
   const swh = size * 1.05;
-  const cols = Math.max(1, p.columns || 1);
+  const cols = Math.max(1, columns);
   const pad = 2;
   const colW = (el.w - pad * 2 - (cols - 1) * 3) / cols;
   const lines: { type: 'title' | 'group' | 'item'; text: string; swatch?: Swatch; gi: number; ii: number }[] = [];
@@ -432,7 +473,8 @@ function renderLegend(el: LayoutElement, groups: LegendGroup[], font: string, de
       y += need;
     }
   }
-  if (overflow) out.push(`<text x="${n2(el.x + el.w - pad)}" y="${n2(el.y + el.h - 1)}" font-size="${n2(size * 0.9)}" fill="#dc2626" text-anchor="end" ${fontAttr(font)}>… légende incomplète : agrandissez le cadre</text>`);
+  // avertissement visible seulement dans l'éditeur, jamais imprimé
+  if (overflow && editor) out.push(`<text x="${n2(el.x + el.w - pad)}" y="${n2(el.y + el.h - 1)}" font-size="${n2(size * 0.9)}" fill="#dc2626" text-anchor="end" ${fontAttr(font)}>… légende incomplète : agrandissez le cadre</text>`);
   return { svg: `<g id="legende">${out.join('')}</g>`, overflow };
 }
 
@@ -486,18 +528,22 @@ function renderCartouche(el: LayoutElement, ctx: RenderCtx, attributions: string
   const out: string[] = [`<rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(el.h)}" fill="#ffffff" stroke="#18181b" stroke-width="0.35"/>`];
   const rows: [string, string][] = [
     ['Projet', p.projet || ctx.site.name],
+    ['Maître d’ouvrage', p.moa || ''],
     ['Auteur', p.auteur || ''],
+    ['Phase', p.phase || ''],
+    ['Planche', p.planche || ''],
     ['Date', p.date || new Date().toLocaleDateString('fr-FR')],
     ['Échelle', `1/${l.scale.toLocaleString('fr-FR')} — ${l.format === 'custom' ? `${l.width} × ${l.height} mm` : `${l.format} ${l.orientation === 'landscape' ? 'paysage' : 'portrait'}`}`],
     ['Projection', `WGS 84 / Pseudo-Mercator — mesures en UTM ${ctx.site.utm.zone}${ctx.site.utm.south ? 'S' : 'N'}`],
   ];
   if (p.mention) rows.push(['Mention', p.mention]);
   let y = el.y + pad + size;
-  const labW = Math.min(18, el.w * 0.28);
+  const labSize = size * 0.85;
+  const labW = Math.min(el.w * 0.42, Math.max(...rows.filter(([, v]) => v).map(([k]) => textWidth(k.toUpperCase(), labSize))) + size * 0.9);
   for (const [k, v] of rows) {
     if (!v) continue;
     const wr = wrapText(v, size, el.w - labW - pad * 2);
-    out.push(`<text x="${n2(el.x + pad)}" y="${n2(y)}" ${fontAttr(font)} font-size="${n2(size * 0.85)}" fill="#71717a" letter-spacing="0.1">${esc(k.toUpperCase())}</text>`);
+    out.push(`<text x="${n2(el.x + pad)}" y="${n2(y)}" ${fontAttr(font)} font-size="${n2(labSize)}" fill="#71717a">${esc(k.toUpperCase())}</text>`);
     wr.forEach((t, i) => out.push(`<text x="${n2(el.x + pad + labW)}" y="${n2(y + i * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="${k === 'Projet' ? 700 : 400}" fill="#18181b">${esc(t)}</text>`));
     y += wr.length * size * 1.25 + size * 0.55;
     if (y > el.y + el.h - pad) break;
@@ -527,7 +573,7 @@ function renderInset(el: LayoutElement, ctx: RenderCtx, font: string) {
     return `<g id="encart">${out.join('')}</g>`;
   }
   const bb = country.features.map((f) => geomBBox(f.geometry)).reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
-  const pad = 2;
+  const pad = Math.max(3, Math.min(el.w, el.h) * 0.08);
   const lat0 = (bb[1] + bb[3]) / 2;
   const c = Math.cos((lat0 * Math.PI) / 180);
   const sx = (el.w - pad * 2) / ((bb[2] - bb[0]) * c);
@@ -566,9 +612,17 @@ function renderLogo(el: LayoutElement) {
 }
 
 // ------------------------------------------------------------------ rendu complet
+/** Facteur de symboles par défaut : les grands formats sont regardés de plus loin. */
+export function defaultSymbolScale(l: Pick<Layout, 'width' | 'height'>) {
+  const r = Math.sqrt((l.width * l.height) / (420 * 297));
+  return Math.round(Math.max(0.8, Math.min(2.2, r)) * 20) / 20;
+}
+
 export function renderLayoutSvg(ctx: RenderCtx): { svg: string; attributions: string[]; legendOverflow: boolean } {
   const { layout, site, data } = ctx;
   const font = layout.font || 'Inter';
+  setMeasureFont(font);
+  PXM = PX_MM * (layout.symbolScale ?? defaultSymbolScale(layout));
   const pr = makeProjector(layout);
   const f = pr.frame;
   const defs: string[] = [];
@@ -581,19 +635,26 @@ export function renderLayoutSvg(ctx: RenderCtx): { svg: string; attributions: st
   map.push(`<rect x="${n2(f.x)}" y="${n2(f.y)}" width="${n2(f.w)}" height="${n2(f.h)}" fill="${ctx.background || '#ffffff'}"/>`);
   for (const t of ctx.basemap || []) map.push(`<image href="${t.href}" x="${n2(t.x)}" y="${n2(t.y)}" width="${n2(t.w)}" height="${n2(t.h)}" preserveAspectRatio="none"/>`);
   const labels: string[] = [];
+  const anns: string[] = [];
   const placed: LabelBox[] = [];
   for (const l of [...visible].reverse()) {
     if (l.kind !== 'vector' || l.style.mode === 'heatmap') continue; // la chaleur est rendue avec le fond (raster)
     const fc = data[l.id];
     if (!fc) continue;
-    map.push(l.role === 'annotations' ? renderAnnotations(l, fc, pr.project, site, font) : renderVectorLayer(l, fc, pr.project, view, defs, labels, placed, site, font));
+    if (l.role === 'annotations') anns.push(renderAnnotations(l, fc, pr.project, site, font));
+    else map.push(renderVectorLayer(l, fc, pr.project, view, defs, labels, placed, site, font));
   }
+  for (const t of ctx.basemapLabels || []) map.push(`<image class="etiquettes-fond" href="${t.href}" x="${n2(t.x)}" y="${n2(t.y)}" width="${n2(t.w)}" height="${n2(t.h)}" preserveAspectRatio="none"/>`);
   map.push(`<g id="etiquettes">${labels.join('')}</g>`);
+  // annotations au-dessus de tout (y compris les noms du fond)
+  map.push(...anns);
 
   // attribution dans le cadre (toujours présente)
   const as = 1.9;
   const attrLines = wrapText(attributions.length ? `Sources : ${attributions.join(' ; ')}` : '', as, Math.min(f.w * 0.75, 240));
-  if (attributions.length) {
+  // les sources figurent déjà dans le cartouche : pas de doublon sur la carte
+  const inCartouche = layout.elements.some((e) => e.type === 'cartouche' && e.props.showSources !== false);
+  if (attributions.length && !inCartouche) {
     const aw = Math.max(...attrLines.map((t) => textWidth(t, as))) + 2.4;
     const ah = attrLines.length * as * 1.25 + 1.4;
     map.push(`<g id="attribution"><rect x="${n2(f.x + f.w - aw)}" y="${n2(f.y + f.h - ah)}" width="${n2(aw)}" height="${n2(ah)}" fill="#ffffff" fill-opacity="0.82"/>`);
@@ -611,7 +672,7 @@ export function renderLayoutSvg(ctx: RenderCtx): { svg: string; attributions: st
         els.push(renderText(el, font, el.type));
         break;
       case 'legend': {
-        const r = renderLegend(el, buildLegend(site, data, { hidden: el.props.hidden, labels: el.props.labels }), font, defs);
+        const r = renderLegend(el, buildLegend(site, data, { hidden: el.props.hidden, labels: el.props.labels, bbox: view }), font, defs, !!ctx.editor);
         legendOverflow ||= r.overflow;
         els.push(r.svg);
         break;
