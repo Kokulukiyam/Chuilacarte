@@ -1,6 +1,6 @@
 # État d'avancement (mis à jour à chaque étape)
 
-Branche : `claude/chuilacarte`. Avancement global : ~90 %. Dépôt distant : https://github.com/Kokulukiyam/Chuilacarte (branche `claude/chuilacarte`, poussée après chaque commit).
+Branche : `claude/chuilacarte`. Avancement global : ~97 %. Dépôt distant : https://github.com/Kokulukiyam/Chuilacarte (branche `claude/chuilacarte`, poussée après chaque commit).
 
 ## Fait
 - Étapes 1 à 8 de SPEC.md implémentées et commitées (socle, sources + collecte, couches/styles/édition, annotations/mesures, mise en page + exports, pont QGIS, analyses, implantation 3D/ombres). README rédigé.
@@ -10,8 +10,8 @@ Branche : `claude/chuilacarte`. Avancement global : ~90 %. Dépôt distant : htt
 - Contrôle cartographique (agent) → `exemples/CONTROLE_CARTOGRAPHIQUE.md` (19 défauts). Corrigés : PNG par bandes + un export à la fois, échelle exacte ellipsoïdale (N-S 0,6 % corrigé), légende auto-ajustée (plus de message rouge imprimé), cartouche (largeur des libellés, champs MOA/phase/planche), attributions dédoublonnées (sources dans le cartouche, pas en double), étiquettes du fond au-dessus des couches (écran et export), fond « Papier + noms de rues » par défaut dans les mises en page, facteur d'épaisseurs/symboles par format, occupation du sol catégorisée (+ aéroport), courbes lissées et cotées, sous-titre selon l'échelle, nom de planche suivant le format, bâti OSM masqué par défaut (Google affiché).
 
 ## Reste à faire
-1. 2e passage de l'agent cartographique : FAIT (exports dans `exemples/medina|yoff|fatick/`, rapport en tête de `exemples/CONTROLE_CARTOGRAPHIQUE.md`). Plus aucun bloquant ; échelle exacte à < 0,01 %, PNG A1 en 1,7 Go. Corrigés ensuite (commit ab21d1b) : N1 sous-titre selon l'échelle, N2 entrée « Autres », N3 légende ≥ 6 pt, N4 halo des noms (partiel : placement OpenFreeMap inchangé), N5 habillage proportionné au format, N7 courbes sous le bâti. Restent ouverts (mineurs) : C3 toponymie, C13 encart sommaire, N6 mer absente du fond papier, N8 équilibre du cartouche, N9 police non incluse dans le SVG. À faire : régénérer les exports et un 3e passage de vérification.
-2. (en cours) Étape 9 : agent de test de bout en bout Playwright (créer un site par recherche/dessin/import, collecter, styler, annoter, mesurer, chaque analyse, importer et caler `tests/fixtures/projet_local.dxf`, 3D, ombres, mise en page + exports PNG/PDF/SVG/GeoJSON/GPKG/DXF, export QGIS ; zéro erreur console ; supprimer ses données). Corriger jusqu'à ce que tout passe.
+1. 2e passage de l'agent cartographique : FAIT (exports dans `exemples/medina|yoff|fatick/`, rapport en tête de `exemples/CONTROLE_CARTOGRAPHIQUE.md`). Plus aucun bloquant ; échelle exacte à < 0,01 %, PNG A1 en 1,7 Go. Corrigés ensuite (commit ab21d1b) : N1 sous-titre selon l'échelle, N2 entrée « Autres », N3 légende ≥ 6 pt, N4 halo des noms (partiel : placement OpenFreeMap inchangé), N5 habillage proportionné au format, N7 courbes sous le bâti. Restent ouverts (mineurs) : C3 toponymie, C13 encart sommaire, N6 mer absente du fond papier, N8 équilibre du cartouche, N9 police non incluse dans le SVG. 3e passage (vérification sur le build corrigé, exports régénérés) : en cours.
+2. Étape 9 : FAIT. L'agent de bout en bout a écrit `tests/e2e/bout-en-bout.ts` et `exemples/CONTROLE_BOUT_EN_BOUT.md` (2 défauts importants et 5 mineurs, tous corrigés). Relance après corrections : 39/39 étapes OK, 0 erreur console ou serveur (`npx tsx tests/e2e/bout-en-bout.ts http://localhost:3500`).
 3. Étape 10 : compléter `RAPPORT.md` (fait / non fait / limites) et relire le README.
 
 ## Défauts connus non traités (mineurs)
