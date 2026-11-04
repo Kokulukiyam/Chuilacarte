@@ -32,7 +32,8 @@ Autres commandes :
 | `npm run dev` | lancement normal (développement) |
 | `npm run build && npm start` | version optimisée, plus rapide |
 | `npm test` | tests unitaires (projections, mesures, mise en page, analyses, calage, ombres, DXF) |
-| `scripts/test-server.sh 3100` | build isolé servi sur un autre port (tests automatisés) |
+| `scripts/test-server.sh 3500` | build isolé servi sur un autre port (tests automatisés) |
+| `npx tsx tests/e2e/bout-en-bout.ts http://localhost:3500` | test de bout en bout Playwright (crée puis supprime ses sites `e2e-*`) ; la première fois : `npx playwright install chromium` |
 
 ### Dépendances facultatives
 
@@ -122,7 +123,7 @@ Outils de la barre du haut : point (P), ligne (L), polygone (G), rectangle (R), 
 - **Ombres portées** : date, heure (heure du Sénégal = UTC) ou curseur, raccourcis solstices/équinoxe ; ombres du projet et du bâti voisin.
 
 ### Mise en page et exports
-**Mise en page** ouvre l'éditeur de planche : format (A4 à A0 ou personnalisé), orientation, **échelle exacte** (1/500 à 1/50 000 ou libre), rotation, fond, police (Inter, IBM Plex Sans, Jost, Source Serif 4). Les éléments (titre, sous-titre, légende générée et modifiable, barre d'échelle, flèche du nord, cartouche, encart de situation, texte libre, logo) se déplacent à la souris et se redimensionnent avec la poignée bleue ; glisser dans le cadre déplace la carte. **Exporter** : **PNG 300 dpi**, **PDF vectoriel**, **SVG** (Illustrator). Les attributions des sources sont toujours écrites sur la carte. **Enregistrer comme modèle** garde une disposition réutilisable sur d'autres sites.
+**Mise en page** ouvre l'éditeur de planche : format (A4 à A0 ou personnalisé), orientation, **échelle exacte** (1/500 à 1/50 000 ou libre), rotation, fond (par défaut « Papier + noms de rues » : fond uni, mer en bleu pâle et noms des rues, pour que seules les couches du site soient dessinées), facteur d'épaisseurs et de symboles (adapté au format), police (Inter, IBM Plex Sans, Jost, Source Serif 4). Le sous-titre suit l'échelle (plan masse, plan de l'îlot, plan de quartier, plan de situation) tant qu'il n'est pas modifié. Les éléments (titre, sous-titre, légende générée et modifiable, barre d'échelle, flèche du nord, cartouche, encart de situation, texte libre, logo) se déplacent à la souris et se redimensionnent avec la poignée bleue ; glisser dans le cadre déplace la carte. **Exporter** : **PNG 300 dpi**, **PDF vectoriel**, **SVG** (Illustrator). Les attributions des sources sont toujours écrites sur la carte. **Enregistrer comme modèle** garde une disposition réutilisable sur d'autres sites.
 
 **Exporter** (barre du haut) : couches visibles en **GeoPackage** (UTM du site, styles QGIS inclus), **GeoJSON** (WGS84) ou **DXF** (mètres, UTM du site, pour AutoCAD). Le filtre attributaire de chaque couche est appliqué.
 
@@ -130,7 +131,7 @@ Outils de la barre du haut : point (P), ligne (L), polygone (G), rectangle (R), 
 
 - Stockage : WGS 84 (EPSG:4326).
 - Mesures, analyses, GeoPackage, DXF et projet QGIS : UTM de la zone du site, choisie automatiquement (zone 28N, EPSG:32628, pour Dakar, Thiès, Fatick, Kaolack, Saint-Louis… ; 29N à l'extrême est).
-- Mises en page : Web Mercator, échelle vraie au centre du cadre (écart < 0,1 % sur l'étendue d'un site), nord en haut.
+- Mises en page : Web Mercator corrigé de l'ellipsoïde, échelle exacte au centre du cadre (écart mesuré < 0,01 % en est-ouest comme en nord-sud sur les planches d'exemple), nord en haut.
 
 ## 6. Aller-retour avec QGIS
 
