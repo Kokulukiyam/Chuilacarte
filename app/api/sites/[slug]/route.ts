@@ -9,7 +9,12 @@ type P = Ctx<{ slug: string }>;
 
 export const GET = handle(async (_req: Request, ctx: P) => {
   const { slug } = await ctx.params;
-  return Response.json(await readSite(slug));
+  const site = await readSite(slug);
+  // la zone tampon est toujours régénérée à partir de l'emprise (même précision que les calculs)
+  if (site.buffer > 0 && site.layers.some((l) => l.id === 'tampon')) {
+    await writeLayer(slug, 'tampon', { type: 'FeatureCollection', features: [{ ...bufferedEmprise(site), properties: { distance_m: site.buffer } }] }).catch(() => {});
+  }
+  return Response.json(site);
 });
 
 /** Remplace site.json (sauvegarde automatique). */
