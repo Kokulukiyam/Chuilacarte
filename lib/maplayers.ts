@@ -449,7 +449,12 @@ export function interactiveLayerIds(map: MlMap, site: Site): string[] {
   for (const l of site.layers) {
     if (!l.visible || l.kind !== 'vector') continue;
     const rec = st.get(l.id);
-    if (rec) ids.push(...rec.specIds.filter((x) => !x.includes('-deco') && !x.endsWith('-label') && !x.endsWith('-hatch')));
+    if (rec)
+      ids.push(
+        ...rec.specIds.filter(
+          (x) => !x.includes('-deco') && !x.endsWith('-label') && !x.endsWith('-hatch') && !(x.endsWith('-fill') && l.style.fillOpacity < 0.05) && !(x.endsWith('-afill') && false),
+        ),
+      );
   }
   return ids;
 }

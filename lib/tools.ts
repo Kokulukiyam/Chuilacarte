@@ -68,9 +68,18 @@ export function handleMapClick(map: MlMap, e: MapMouseEvent, layerIds: string[])
     st.select(null);
     return;
   }
-  const h0 = hits[0];
+  const h0 = hits.find((h) => String(h.source) === `src-${st.selectedLayerId}`) || hits[0];
   const layerId = String(h0.source).replace(/^src-/, '');
   const fid = String(h0.properties?._fid ?? h0.id);
+  const cur = st.selection;
+  if ((e.originalEvent as MouseEvent)?.shiftKey && cur && cur.layerId === layerId) {
+    const set = new Set(cur.fids?.length ? cur.fids : [cur.fid]);
+    if (set.has(fid)) set.delete(fid);
+    else set.add(fid);
+    const arr = [...set];
+    st.select(arr.length ? { layerId, fid: arr[arr.length - 1], fids: arr } : null);
+    return;
+  }
   st.select({ layerId, fid });
   if (st.rightTab !== 'couche') st.setUi({ rightTab: 'couche' });
 }

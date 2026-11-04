@@ -1,8 +1,8 @@
 import 'server-only';
 
 export function userAgent() {
-  const contact = process.env.CONTACT_EMAIL ? ` (${process.env.CONTACT_EMAIL})` : '';
-  return `Chuilacarte/0.1 outil cartographique personnel${contact}`;
+  const c = process.env.CHUILACARTE_CONTACT || process.env.CONTACT_EMAIL;
+  return `Chuilacarte/0.1 (outil cartographique personnel${c ? `; contact: ${c}` : ''})`;
 }
 
 export async function fetchWithTimeout(url: string, init: RequestInit & { timeout?: number } = {}) {
@@ -32,3 +32,6 @@ export function rateLimiter(minIntervalMs: number) {
     return p;
   };
 }
+
+/** Nominatim : 1 requête par seconde au maximum, pour tout le serveur. */
+export const nominatimSlot = rateLimiter(1100);

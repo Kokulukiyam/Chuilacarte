@@ -35,6 +35,8 @@ interface Snapshot {
 export interface Selection {
   layerId: string;
   fid: string;
+  /** sélection multiple (Maj + clic), dans la même couche */
+  fids?: string[];
 }
 
 interface State {
@@ -54,6 +56,8 @@ interface State {
   mode3d: boolean;
   layoutMode: boolean;
   message: { text: string; kind: 'info' | 'error' | 'ok' } | null;
+  /** couche qui reçoit les objets dessinés (sinon : annotations) */
+  drawTarget: string | null;
   // actions
   init(site: Site, data: Record<string, FC>): void;
   setTool(t: Tool): void;
@@ -100,13 +104,15 @@ export const useStore = create<State>((set, get) => ({
   mode3d: false,
   layoutMode: false,
   message: null,
+  drawTarget: null,
   init(site, data) {
     const d: Record<string, FC> = {};
     for (const [k, v] of Object.entries(data)) d[k] = ensureFids(v);
     set({ site, data: d, past: [], future: [], dirtySite: false, dirtyLayers: {}, selectedLayerId: null, selection: null, tool: 'select', saving: 'idle' });
   },
   setTool(t) {
-    set({ tool: t });
+    // la cible de dessin ne vaut que pour l'outil de dessin en cours
+    set({ tool: t, drawTarget: t === 'draw-point' || t === 'draw-line' || t === 'draw-polygon' ? get().drawTarget : null });
   },
   selectLayer(id) {
     set({ selectedLayerId: id, rightTab: id ? 'couche' : get().rightTab });

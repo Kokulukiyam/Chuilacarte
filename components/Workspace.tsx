@@ -11,6 +11,10 @@ import RightPanel from './RightPanel';
 import Toast from './Toast';
 import { installShortcuts } from '@/lib/shortcuts';
 import BottomPanel from './BottomPanel';
+import { useConfig } from '@/lib/config';
+import '@/lib/annotate';
+import '@/lib/edit';
+import { AnnotationBar } from './AnnotationProps';
 
 export default function Workspace({ slug }: { slug: string }) {
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +42,7 @@ export default function Workspace({ slug }: { slug: string }) {
         if (!cancelled) setError(e.message);
       }
     })();
+    useConfig.getState().load();
     const stop = startAutosave();
     const stopKeys = installShortcuts();
     const before = () => {
@@ -73,6 +78,7 @@ export default function Workspace({ slug }: { slug: string }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
             <MapView />
+            <AnnotationBar />
           </div>
           <BottomPanel />
         </div>

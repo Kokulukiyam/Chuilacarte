@@ -19,6 +19,7 @@ import { useStore, type Tool } from '@/lib/store';
 import { BASEMAPS } from '@/lib/basemaps';
 import { isDark, setTheme } from '@/lib/theme';
 import ImportButton from './ImportButton';
+import { useConfig } from '@/lib/config';
 import { TOOLBAR_GROUPS } from './toolbarTools';
 
 export function ToolButton({ tool, icon: I, label, k }: { tool: Tool; icon: any; label: string; k?: string }) {
@@ -49,6 +50,15 @@ function BasemapMenu() {
   }, []);
   const set = (fn: (s: any) => void) => useStore.getState().patchSite(fn);
   const hasSentinel = site.layers.some((l) => l.source.name.startsWith('Sentinel-2') && l.raster?.type === 'image');
+  const cfg = useConfig((s) => s.cfg);
+  const unavailable = (b: (typeof BASEMAPS)[number]) =>
+    b.kind === 'sentinel' && !hasSentinel
+      ? 'Collectez d’abord l’imagerie Sentinel-2 du site'
+      : b.requires === 'arcgis' && !cfg.arcgis
+        ? 'Désactivé : renseignez ARCGIS_API_KEY dans .env.local (compte ArcGIS gratuit, voir README)'
+        : b.requires === 'noncommercial' && !cfg.noncommercial
+          ? 'Désactivé : licence non commerciale, activez ENABLE_NONCOMMERCIAL_SOURCES=true dans .env.local'
+          : null;
   return (
     <div className="relative" ref={ref}>
       <button className="btn" onClick={() => setOpen(!open)} data-testid="basemap-button">
@@ -60,14 +70,14 @@ function BasemapMenu() {
           {BASEMAPS.map((b) => (
             <button
               key={b.id}
-              disabled={b.kind === 'sentinel' && !hasSentinel}
+              disabled={!!unavailable(b)}
               className={`flex w-full items-center justify-between rounded px-2 py-1 text-left hover:bg-zinc-100 disabled:opacity-40 dark:hover:bg-zinc-800 ${site.basemap === b.id ? 'font-semibold' : ''}`}
               onClick={() => {
                 set((s) => (s.basemap = b.id));
                 setOpen(false);
               }}
               data-testid={`basemap-${b.id}`}
-              title={b.kind === 'sentinel' && !hasSentinel ? 'Collectez d’abord l’imagerie Sentinel-2 du site' : b.attribution}
+              title={unavailable(b) || b.attribution}
             >
               {b.label}
               {site.basemap === b.id && <Check size={14} />}
@@ -102,7 +112,9 @@ export default function Toolbar() {
   const layoutMode = useStore((s) => s.layoutMode);
   const [dark, setDark] = useState(false);
   const [help, setHelp] = useState(false);
-  useEffect(() => setDark(isDark()), []);
+  useEffect(() => {
+    setDark(isDark());
+  }, []);
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-900">
       <Link href="/" className="btn-ghost" title="Accueil">

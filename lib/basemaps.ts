@@ -16,6 +16,10 @@ export interface BasemapDef {
   dark?: boolean;
   /** URL XYZ publique, utilisée par l'export QGIS */
   xyz?: string;
+  /** option requise (clé ou réglage dans .env.local) */
+  requires?: 'arcgis' | 'noncommercial';
+  /** fond réservé à l'écran : remplacé par un fond OpenFreeMap dans les exports */
+  screenOnly?: boolean;
 }
 
 export const BASEMAPS: BasemapDef[] = [
@@ -24,7 +28,7 @@ export const BASEMAPS: BasemapDef[] = [
     label: 'Vectoriel clair',
     kind: 'vector',
     styleUrl: 'https://tiles.openfreemap.org/styles/positron',
-    attribution: 'OpenFreeMap © OpenMapTiles, données © les contributeurs d’OpenStreetMap',
+    attribution: '© OpenFreeMap, © OpenMapTiles, données © les contributeurs d’OpenStreetMap',
     xyz: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   },
   {
@@ -32,7 +36,7 @@ export const BASEMAPS: BasemapDef[] = [
     label: 'Vectoriel couleur',
     kind: 'vector',
     styleUrl: 'https://tiles.openfreemap.org/styles/liberty',
-    attribution: 'OpenFreeMap © OpenMapTiles, données © les contributeurs d’OpenStreetMap',
+    attribution: '© OpenFreeMap, © OpenMapTiles, données © les contributeurs d’OpenStreetMap',
     xyz: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   },
   {
@@ -40,7 +44,7 @@ export const BASEMAPS: BasemapDef[] = [
     label: 'Vectoriel sombre',
     kind: 'vector',
     styleUrl: 'https://tiles.openfreemap.org/styles/dark',
-    attribution: 'OpenFreeMap © OpenMapTiles, données © les contributeurs d’OpenStreetMap',
+    attribution: '© OpenFreeMap, © OpenMapTiles, données © les contributeurs d’OpenStreetMap',
     dark: true,
     xyz: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   },
@@ -51,14 +55,24 @@ export const BASEMAPS: BasemapDef[] = [
     tiles: '/api/tiles/osm/{z}/{x}/{y}.png',
     attribution: '© les contributeurs d’OpenStreetMap',
     xyz: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    screenOnly: true,
   },
   {
     id: 'satellite',
-    label: 'Satellite (Esri)',
+    label: 'Satellite haute résolution (Esri)',
     kind: 'raster',
     tiles: '/api/tiles/esri/{z}/{x}/{y}.jpg',
-    attribution: 'Imagerie : Esri, Maxar, Earthstar Geographics et la communauté des utilisateurs SIG',
-    xyz: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Powered by Esri — Source : Esri, Vantor, Earthstar Geographics et la communauté des utilisateurs SIG',
+    requires: 'arcgis',
+  },
+  {
+    id: 'eox',
+    label: 'Mosaïque Sentinel-2 sans nuages (EOx, non commercial)',
+    kind: 'raster',
+    tiles: '/api/tiles/eox/{z}/{x}/{y}.jpg',
+    attribution: 'EOxCloudless 2024 https://cloudless.eox.at par EOX IT Services GmbH (contient des données Copernicus Sentinel modifiées 2024) — usage non commercial',
+    requires: 'noncommercial',
+    xyz: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg',
   },
   {
     id: 'sentinel',
@@ -72,7 +86,7 @@ export const BASEMAPS: BasemapDef[] = [
     label: 'Relief (ombrage et courbes)',
     kind: 'relief',
     background: '#f6f4ef',
-    attribution: 'Relief : Mapzen Terrain Tiles (SRTM, NASA)',
+    attribution: 'Relief : Terrain Tiles (Mapzen/Tilezen, AWS Open Data) — SRTM : USGS ; ETOPO1 : NOAA',
     xyz: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
   },
   {

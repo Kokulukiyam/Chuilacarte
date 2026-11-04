@@ -4,6 +4,7 @@ import { useStore } from '@/lib/store';
 import { fmtArea, fmtLength, metricArea, metricLength } from '@/lib/proj';
 import { bufferedEmprise } from '@/lib/site';
 import { attributionsFor } from '@/lib/attribution';
+import ImageryPanel from './ImageryPanel';
 
 export default function SitePanel() {
   const site = useStore((s) => s.site!);
@@ -68,6 +69,7 @@ export default function SitePanel() {
           {site.center[1].toFixed(5)}, {site.center[0].toFixed(5)}
         </dd>
       </dl>
+      <ImageryPanel />
       <div>
         <div className="section-title mb-1">Sources affichées</div>
         <ul className="space-y-1 text-[11px] text-zinc-600 dark:text-zinc-400">

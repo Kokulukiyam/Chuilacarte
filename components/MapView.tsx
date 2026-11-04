@@ -10,7 +10,8 @@ import { DrawController } from '@/lib/draw';
 import { mapRef } from '@/lib/mapref';
 import { bufferedEmprise } from '@/lib/site';
 import { handleDrawFinish, handleMapClick, handleLiveChange, toolDrawMode } from '@/lib/tools';
-import { syncOverlays } from '@/lib/overlays';
+import { syncOverlays, overlaySubscribe } from '@/lib/overlays';
+import { startVertexEdit } from '@/lib/edit';
 
 export default function MapView() {
   const el = useRef<HTMLDivElement>(null);
@@ -84,21 +85,36 @@ export default function MapView() {
         return;
       }
       if (s.site.layers !== prev.site?.layers || s.data !== prev.data || s.mode3d !== prev.mode3d || s.site.settings !== prev.site?.settings) {
-        if (map.isStyleLoaded() || map.getSource('sel')) syncLayers(map, s.site, s.data, { mode3d: s.mode3d, beforeId: 'sel-fill' });
+        if (map.getSource('sel')) {
+          syncLayers(map, s.site, s.data, { mode3d: s.mode3d, beforeId: 'sel-fill' });
+          syncOverlays(map);
+        }
       }
       if (s.selection !== prev.selection || s.data !== prev.data) updateSelection(map);
-      if (s.tool !== prev.tool) draw.current?.setMode(toolDrawMode(s.tool));
+      if (s.tool !== prev.tool) {
+        if (prev.tool === 'edit' && draw.current?.isEditing()) draw.current.stopEdit();
+        draw.current?.setMode(toolDrawMode(s.tool));
+        if (s.tool === 'edit' && !draw.current?.isEditing()) {
+          if (s.selection) startVertexEdit();
+          else {
+            useStore.getState().toast('Sélectionnez d’abord un objet à modifier', 'info');
+            useStore.getState().setTool('select');
+          }
+        }
+        map.getCanvas().style.cursor = s.tool === 'select' ? '' : 'crosshair';
+      }
       if (s.mode3d !== prev.mode3d) {
         map.easeTo({ pitch: s.mode3d ? 55 : 0, duration: 600 });
       }
-      syncOverlays(map);
     });
+    const unsubOv = overlaySubscribe(map);
     styleKey.current = baseKey(site);
     applyBase(map, site);
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(el.current!);
     return () => {
       unsub();
+      unsubOv();
       ro.disconnect();
       draw.current?.destroy();
       mapRef.map = null;
@@ -136,6 +152,7 @@ function updateSelection(map: MlMap) {
   const s = useStore.getState();
   const src: any = map.getSource('sel');
   if (!src) return;
-  const f = s.selection ? s.data[s.selection.layerId]?.features.find((x) => x.properties?._fid === s.selection!.fid) : null;
-  src.setData({ type: 'FeatureCollection', features: f ? [f] : [] });
+  const ids = s.selection ? new Set(s.selection.fids?.length ? s.selection.fids : [s.selection.fid]) : null;
+  const feats = ids ? (s.data[s.selection!.layerId]?.features || []).filter((x) => ids.has(x.properties?._fid)) : [];
+  src.setData({ type: 'FeatureCollection', features: feats });
 }

@@ -1,9 +1,8 @@
 import { handle } from '@/lib/server/route';
-import { fetchWithTimeout, rateLimiter } from '@/lib/server/http';
+import { fetchWithTimeout, nominatimSlot } from '@/lib/server/http';
 import { HttpError } from '@/lib/server/storage';
 
 export const runtime = 'nodejs';
-const nominatimSlot = rateLimiter(1100);
 const cache = new Map<string, any>();
 
 export const GET = handle(async (req: Request) => {
