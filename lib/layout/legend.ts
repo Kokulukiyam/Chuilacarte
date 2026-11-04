@@ -81,6 +81,9 @@ export function buildLegend(site: Site, data: Record<string, FC>, opts: { hidden
       const items = s.categorized.classes
         .filter((c) => present.has(String(c.value)))
         .map((c) => ({ label: c.label || c.value, swatch: make(c.color, l.geom === 'line' ? c.color : s.stroke, featureWidth(s, { [s.categorized!.field]: c.value })) }));
+      // valeurs présentes hors des classes : dessinées dans la couleur « autre », donc une entrée « Autres »
+      const known = new Set(s.categorized.classes.map((c) => String(c.value)));
+      if ([...present].some((v) => !known.has(v))) items.push({ label: 'Autres', swatch: make(s.categorized.other, l.geom === 'line' ? s.categorized.other : s.stroke) });
       if (items.length) groups.push({ layerId: l.id, title: label, items });
       continue;
     }

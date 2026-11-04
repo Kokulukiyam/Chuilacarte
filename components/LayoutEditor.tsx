@@ -6,7 +6,7 @@ import { useStore } from '@/lib/store';
 import { BASEMAPS } from '@/lib/basemaps';
 import { useConfig } from '@/lib/config';
 import { siteBBox } from '@/lib/site';
-import { newLayout, pageSize, relayout } from '@/lib/layout/defaults';
+import { applyScale, newLayout, pageSize, relayout } from '@/lib/layout/defaults';
 import { fitScale, makeProjector, SCALES } from '@/lib/layout/geo';
 import { renderLayoutSvg, FONT_STACKS, defaultSymbolScale } from '@/lib/layout/svg';
 import { renderBasemap, type BasemapRender } from '@/lib/layout/basemap';
@@ -317,7 +317,7 @@ export default function LayoutEditor() {
           <div>
             <label className="text-[12px]">Échelle</label>
             <div className="flex gap-1">
-              <select className="input" value={SCALES.includes(layout.scale) ? layout.scale : 'libre'} onChange={(e) => e.target.value !== 'libre' && set((l) => (l.scale = Number(e.target.value)))} data-testid="layout-scale">
+              <select className="input" value={SCALES.includes(layout.scale) ? layout.scale : 'libre'} onChange={(e) => e.target.value !== 'libre' && set((l) => applyScale(l, Number(e.target.value)))} data-testid="layout-scale">
                 {SCALES.map((s) => (
                   <option key={s} value={s}>
                     1/{s.toLocaleString('fr-FR')}
@@ -325,11 +325,11 @@ export default function LayoutEditor() {
                 ))}
                 <option value="libre">Libre…</option>
               </select>
-              <input type="number" className="input w-28" min={50} max={1000000} value={layout.scale} onChange={(e) => Number(e.target.value) >= 50 && set((l) => (l.scale = Math.round(Number(e.target.value))))} aria-label="Échelle libre" data-testid="layout-scale-free" />
+              <input type="number" className="input w-28" min={50} max={1000000} value={layout.scale} onChange={(e) => Number(e.target.value) >= 50 && set((l) => applyScale(l, Math.round(Number(e.target.value))))} aria-label="Échelle libre" data-testid="layout-scale-free" />
             </div>
           </div>
           <div className="flex gap-1">
-            <button className="btn flex-1" onClick={() => set((l) => ((l.center = site.center), (l.scale = fitScale(l, siteBBox(site)))))} title="Centrer sur le site et ajuster l’échelle">
+            <button className="btn flex-1" onClick={() => set((l) => ((l.center = site.center), applyScale(l, fitScale(l, siteBBox(site)))))} title="Centrer sur le site et ajuster l’échelle">
               <Crosshair size={13} /> Cadrer le site
             </button>
             <label className="flex items-center gap-1 text-[12px]">

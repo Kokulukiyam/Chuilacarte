@@ -57,7 +57,11 @@ export async function buildBaseStyle(o: BaseOptions): Promise<StyleSpecification
       if (o.noLabels) style.layers = style.layers.filter((l) => l.type !== 'symbol');
       if (def.kind === 'labels') {
         // fond papier : seulement les noms (rues, quartiers, lieux), sans dessin de voirie ni de bâti
-        style.layers = [{ id: 'bm-background', type: 'background', paint: { 'background-color': def.background! } }, ...style.layers.filter((l) => l.type === 'symbol' && !/shield|oneway|poi/i.test(l.id))];
+        // halo couleur papier marqué et texte foncé : les noms restent lisibles sur le bâti et les voies du site
+        const names = style.layers
+          .filter((l) => l.type === 'symbol' && !/shield|oneway|poi/i.test(l.id))
+          .map((l: any) => ({ ...l, paint: { ...l.paint, 'text-color': /highway|road|transportation/i.test(l.id) ? '#27272a' : l.paint?.['text-color'] ?? '#3f3f46', 'text-halo-color': def.background!, 'text-halo-width': 1.6, 'text-halo-blur': 0.2 } }));
+        style.layers = [{ id: 'bm-background', type: 'background', paint: { 'background-color': def.background! } }, ...names];
       }
     } catch {
       // hors ligne : fond uni

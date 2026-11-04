@@ -382,15 +382,15 @@ function swatchSvg(sw: Swatch, x: number, y: number, w: number, h: number, defs:
         defs.push(hatchDef(`${idp}-h`, sw.hatch, sw.hatchColor));
         hatch = `<rect x="${n2(x)}" y="${n2(y)}" width="${n2(w)}" height="${n2(h)}" fill="url(#${idp}-h)"/>`;
       }
-      const sww = Math.max(0.1, sw.strokeWidth * PX_MM);
+      const sww = Math.min(h * 0.22, Math.max(0.1, sw.strokeWidth * PXM));
       return `<rect x="${n2(x)}" y="${n2(y)}" width="${n2(w)}" height="${n2(h)}" fill="${sw.fillOpacity > 0 ? sw.fill : 'none'}" fill-opacity="${n2(Math.max(sw.fillOpacity, sw.fillOpacity > 0 ? 0.25 : 0))}"${sw.strokeWidth > 0 ? ` stroke="${sw.stroke}" stroke-width="${n2(sww)}"${dashAttr(sw.dash, sww)}` : ''}/>${hatch}`;
     }
     case 'line': {
-      const sww = Math.max(0.15, sw.strokeWidth * PX_MM);
+      const sww = Math.min(h * 0.7, Math.max(0.15, sw.strokeWidth * PXM));
       return `<line x1="${n2(x)}" y1="${n2(y + h / 2)}" x2="${n2(x + w)}" y2="${n2(y + h / 2)}" stroke="${sw.stroke}" stroke-width="${n2(sww)}" stroke-linecap="butt"${dashAttr(sw.dash, sww)}/>`;
     }
     case 'point':
-      return shapeSvg(sw.shape, x + w / 2, y + h / 2, Math.min(h, Math.max(1.6, sw.size * PX_MM)), sw.fill, sw.stroke, sw.strokeWidth * PX_MM);
+      return shapeSvg(sw.shape, x + w / 2, y + h / 2, Math.min(h, Math.max(1.6, sw.size * PXM)), sw.fill, sw.stroke, Math.min(h * 0.15, sw.strokeWidth * PXM));
     case 'raster':
       return `<rect x="${n2(x)}" y="${n2(y)}" width="${n2(w)}" height="${n2(h)}" fill="${sw.color}"/>`;
     case 'marker': {
@@ -406,11 +406,14 @@ export interface LegendLayoutResult {
 }
 
 function renderLegend(el: LayoutElement, groups: LegendGroup[], font: string, defs: string[], editor = false): LegendLayoutResult {
-  // la légende se réduit (jusqu'à 70 %) puis passe sur plus de colonnes avant de signaler un débordement
+  // la légende se réduit un peu, passe sur plus de colonnes, puis se réduit encore, sans descendre sous 6 pt
   const base = el.props.size || 8;
+  const minPt = Math.min(base, 6);
   const cols0 = Math.max(1, el.props.columns || 1);
+  const maxCols = Math.max(cols0, Math.min(cols0 + 2, Math.floor(el.w / 45)));
   const tries: [number, number][] = [];
-  for (const c of [cols0, cols0 + 1]) for (const f of [1, 0.92, 0.85, 0.78, 0.7]) tries.push([base * f, c]);
+  for (const f of [1, 0.92]) for (let c = cols0; c <= maxCols; c++) tries.push([base * f, c]);
+  for (const f of [0.85, 0.78, 0.7]) for (let c = cols0; c <= maxCols; c++) tries.push([Math.max(minPt, base * f), c]);
   for (const [sz, c] of tries) {
     const d: string[] = [];
     const r = legendAt(el, groups, font, d, sz, c, editor);
@@ -420,7 +423,7 @@ function renderLegend(el: LayoutElement, groups: LegendGroup[], font: string, de
     }
   }
   const d: string[] = [];
-  const r = legendAt(el, groups, font, d, base * 0.7, cols0 + 1, editor);
+  const r = legendAt(el, groups, font, d, Math.max(minPt, base * 0.7), maxCols, editor);
   defs.push(...d);
   return r;
 }
@@ -493,7 +496,7 @@ function renderScaleBar(el: LayoutElement, layout: Layout, font: string) {
   const L = niceScaleLength(layout.scale, el.w - 6);
   const totalMm = (L * 1000) / layout.scale;
   const segMm = totalMm / segs;
-  const h = p.barHeight || 1.6;
+  const h = p.barHeight || Math.max(1.2, size * 0.6);
   const x0 = el.x + 2;
   const y0 = el.y + size * 1.6;
   const out: string[] = [];
@@ -538,7 +541,7 @@ function renderCartouche(el: LayoutElement, ctx: RenderCtx, attributions: string
   ];
   if (p.mention) rows.push(['Mention', p.mention]);
   let y = el.y + pad + size;
-  const labSize = size * 0.85;
+  const labSize = Math.max(size * 0.85, 5 * PT);
   const labW = Math.min(el.w * 0.42, Math.max(...rows.filter(([, v]) => v).map(([k]) => textWidth(k.toUpperCase(), labSize))) + size * 0.9);
   for (const [k, v] of rows) {
     if (!v) continue;
@@ -551,7 +554,7 @@ function renderCartouche(el: LayoutElement, ctx: RenderCtx, attributions: string
   if (p.showSources !== false && attributions.length && y < el.y + el.h - pad - size) {
     out.push(`<line x1="${n2(el.x)}" y1="${n2(y - size * 0.5)}" x2="${n2(el.x + el.w)}" y2="${n2(y - size * 0.5)}" stroke="#d4d4d8" stroke-width="0.2"/>`);
     y += size * 0.5;
-    const ss = size * 0.78;
+    const ss = Math.max(size * 0.78, 5.5 * PT);
     const wr = wrapText(`Sources : ${attributions.join(' ; ')}`, ss, el.w - pad * 2);
     for (const t of wr) {
       if (y > el.y + el.h - pad) {
@@ -585,8 +588,9 @@ function renderInset(el: LayoutElement, ctx: RenderCtx, font: string) {
   for (const f of ctx.inset?.regions?.features || []) out.push(`<path d="${pathOf(f.geometry, P)}" fill="#f4f4f5" stroke="#d4d4d8" stroke-width="0.12"/>`);
   for (const f of country.features) out.push(`<path d="${pathOf(f.geometry, P)}" fill="${ctx.inset?.regions ? 'none' : '#f4f4f5'}" stroke="#71717a" stroke-width="0.25"/>`);
   const [sx0, sy0] = P(ctx.site.center[0], ctx.site.center[1]);
-  out.push(`<circle cx="${n2(sx0)}" cy="${n2(sy0)}" r="1.4" fill="#dc2626" stroke="#ffffff" stroke-width="0.35"/>`);
-  out.push(`<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h - 1.4)}" ${fontAttr(font)} font-size="2.2" text-anchor="middle" fill="#52525b">${esc(el.props.title || 'Situation')}</text>`);
+  const k = Math.max(1, Math.min(2.6, Math.min(el.w, el.h) / 45));
+  out.push(`<circle cx="${n2(sx0)}" cy="${n2(sy0)}" r="${n2(1.4 * k)}" fill="#dc2626" stroke="#ffffff" stroke-width="${n2(0.35 * k)}"/>`);
+  out.push(`<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h - 1.4 * k)}" ${fontAttr(font)} font-size="${n2(2.2 * k)}" text-anchor="middle" fill="#52525b">${esc(el.props.title || 'Situation')}</text>`);
   return `<g id="encart">${out.join('')}</g>`;
 }
 

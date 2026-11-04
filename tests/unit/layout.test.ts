@@ -62,3 +62,35 @@ describe('mise en page', () => {
     expect(zoomForScale(1000, 0)).toBeLessThan(18.25);
   });
 });
+
+describe('mise en page : 2e contrôle cartographique', () => {
+  const site = createSiteObject('Test', 'test', emprise, 300);
+  it('le sous-titre suit l’échelle choisie, sauf s’il a été personnalisé', async () => {
+    const { applyScale } = await import('@/lib/layout/defaults');
+    const l = newLayout(site, { scale: 5000 });
+    const sub = () => l.elements.find((e) => e.type === 'subtitle')!.props.text;
+    expect(sub()).toBe('Plan de quartier');
+    applyScale(l, 1000);
+    expect(sub()).toBe('Plan masse');
+    l.elements.find((e) => e.type === 'subtitle')!.props.text = 'Mon sous-titre';
+    applyScale(l, 2500);
+    expect(sub()).toBe('Mon sous-titre');
+  });
+  it('les valeurs hors classes ont une entrée « Autres » en légende', async () => {
+    const { buildLegend } = await import('@/lib/layout/legend');
+    const { makeLayer } = await import('@/lib/site');
+    const l = makeLayer({ id: 'occ', name: 'Occupation du sol', role: 'landuse', geom: 'polygon' } as any);
+    l.style = { ...l.style, mode: 'categorized', categorized: { field: 'classe', classes: [{ value: 'habitat', color: '#f00', label: 'Habitat' }], other: '#e7e5e4' } };
+    const sq = (v: string) => ({ type: 'Feature', properties: { classe: v }, geometry: emprise.features[0].geometry });
+    const s2 = { ...site, layers: [l] };
+    const g = buildLegend(s2 as any, { occ: { type: 'FeatureCollection', features: [sq('habitat'), sq('stadium')] } as any });
+    expect(g[0].items.map((i) => i.label)).toEqual(['Habitat', 'Autres']);
+    const g2 = buildLegend(s2 as any, { occ: { type: 'FeatureCollection', features: [sq('habitat')] } as any });
+    expect(g2[0].items.map((i) => i.label)).toEqual(['Habitat']);
+  });
+  it('la légende A4 ne descend pas sous 6 pt', () => {
+    const l = newLayout(site, { format: 'A4', scale: 10000 });
+    const leg = l.elements.find((e) => e.type === 'legend')!;
+    expect(leg.props.size * 0.3528).toBeGreaterThanOrEqual(6 * 0.3528 - 1e-9);
+  });
+});

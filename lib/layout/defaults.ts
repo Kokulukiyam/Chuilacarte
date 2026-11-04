@@ -17,7 +17,7 @@ export function defaultElements(site: Site, W: number, H: number, orientation: '
   const sf = Math.sqrt((W * H) / (420 * 297));
   const m = Math.round(10 * Math.max(0.7, Math.min(2.2, sf)));
   const gap = Math.round(5 * Math.max(0.8, sf));
-  const fs = (pt: number) => Math.round(pt * Math.max(0.75, Math.min(2.6, sf)) * 2) / 2;
+  const fs = (pt: number) => Math.round(pt * Math.max(0.85, Math.min(2.6, sf)) * 2) / 2;
   if (orientation === 'landscape') {
     const col = Math.round(Math.min(170, Math.max(62, W * 0.235)));
     const cx = W - m - col;
@@ -92,6 +92,14 @@ export function newLayout(site: Site, opts: { format?: Layout['format']; orienta
   const sub = l.elements.find((e) => e.type === 'subtitle');
   if (sub) sub.props.text = subtitleFor(l.scale);
   return l;
+}
+
+const AUTO_SUBTITLES = ['Plan masse', 'Plan de l’îlot et de ses abords', 'Plan de quartier', 'Plan de situation'];
+
+/** Change l'échelle d'une mise en page (brouillon modifiable) ; le sous-titre suit s'il n'a pas été personnalisé. */
+export function applyScale(l: Layout, scale: number) {
+  l.scale = scale;
+  for (const e of l.elements) if (e.type === 'subtitle' && AUTO_SUBTITLES.includes(e.props.text)) e.props.text = subtitleFor(scale);
 }
 
 export function subtitleFor(scale: number) {

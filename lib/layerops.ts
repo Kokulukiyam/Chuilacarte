@@ -13,7 +13,7 @@ const ROLE_RANK: Record<LayerRole, number> = {
   buffer: 4,
   amenities: 5,
   pois: 6,
-  contours: 7,
+  contours: 10.8, // sous le bâti : les courbes ne traversent pas les toits
   railways: 8,
   roads: 9,
   buildings: 10,
