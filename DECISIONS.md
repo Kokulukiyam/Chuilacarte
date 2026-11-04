@@ -78,3 +78,4 @@ Chaque ligne : un choix non précisé par la spécification, et la raison.
 - Isochrones : OpenRouteService si `ORS_API_KEY`, sinon Valhalla FOSSGIS (1 requête/s), durées libres (5 max, 60 min max).
 - Carte de chaleur : style « Chaleur » de MapLibre (rendue avec le fond dans les exports, car non vectorielle) ; carte de densité : grille hexagonale (taille réglable) avec nombre et densité par hectare.
 - Zones d'analyse dessinées gardées dans une couche « Zones d'analyse » (réutilisables, exportables).
+- Build : ESLint ignoré pendant `next build` (le projet se vérifie par `tsc --noEmit`) et `outputFileTracingRoot` fixé au projet, pour ne pas dépendre d'une configuration ESLint ou d'un package-lock.json d'un dossier parent ; `scripts/test-server.sh` libère le port avec `lsof` sur macOS.
