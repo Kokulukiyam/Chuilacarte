@@ -90,7 +90,9 @@ export function buildGpkg(file: string, site: Site, layers: ExportLayer[], crs: 
 /** Style gradué sans classes (calcul jamais fait) : on calcule les bornes sur les objets exportés. */
 export function ensureGradClasses(layer: Layer, feats: { properties: Record<string, any> }[]): Layer {
   const g = layer.style.graduated;
-  if (layer.style.mode !== 'graduated' || !g?.field || g.classes.length) return layer;
+  // classes absentes, ou dégénérées (bornes égales) : on recalcule sur les objets exportés
+  const degenerate = g?.classes.some((c) => c.min === c.max) ?? false;
+  if (layer.style.mode !== 'graduated' || !g?.field || (g.classes.length && !degenerate)) return layer;
   const vals = feats.map((f) => Number(f.properties?.[g.field])).filter(Number.isFinite);
   return { ...layer, style: { ...layer.style, graduated: { ...g, classes: computeGradClasses(vals, g.method, g.ramp, 5) } } };
 }

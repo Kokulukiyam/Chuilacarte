@@ -378,3 +378,58 @@ Entre les deux passages, le site s'est enrichi de couches d'analyse : « Zones d
 - n° 14 : police Inter imposée.
 
 Aucun défaut n'est bloquant au deuxième passage. Les deux défauts importants les plus visibles au premier passage (fond absent, annotations et étiquettes invisibles) sont corrigés.
+
+---
+
+## Troisième passage (contrôle ciblé et non-régression)
+
+Nouveaux exports téléchargés le 04/11/2026 sur le serveur reconstruit. Entre-temps, le site a encore reçu des couches :
+- « Plan — projet_local », en polygones et en points ;
+- « Image — plan_scan.png » ;
+- « Ombres portées — 04/11/2026 09:00 », avec 2587 polygones.
+
+Le projet compte maintenant **27 couches**, et le GeoPackage 21 tables plus `layer_styles`.
+
+Rendus mis à jour dans `exemples/qgis/` : `rendu_projet.png`, `rendu_toutes_couches.png`, `rendu_population.png`, `rendu_isochrones.png`, `rendu_worldcover-2021.png`, `rendu_sentinel2-2026-10-23.png`, et un nouveau `rendu_chaleur.png`. Deux fichiers datent du 2e passage et n'ont pas été refaits : `rendu_densite_chaleur.png` (la chaleur y est encore en points gris) et `rendu_annotations_zoom.png`.
+
+### Points corrigés
+
+| Point | Résultat | Preuve |
+|---|---|---|
+| R1 Population graduée dans le `.qgs` | **Corrigé** | Le `.qgs` contient un `graduatedSymbol` à 5 classes (10,3 → 239,9), avec 19, 18, 18, 18 et 17 objets, comme le GeoPackage seul. Le rendu est en camaïeu orangé (`rendu_population.png`). |
+| R2 Import DXF selon `$DWGCODEPAGE` | **Corrigé** | Le DXF exporté (ANSI_1252), réimporté par `/api/import`, redonne « Marché central » et « 1 Marché central ». Les entités reviennent en 14 points, 410 lignes et 3496 polygones. |
+| R3 Carte de chaleur | **Corrigé** | `heatmapRenderer` : rayon 7,94 mm (environ 30 px), dégradé jaune → rouge, dans le `.qgs` comme dans `layer_styles`. Les taches de chaleur apparaissent sur les repères (`rendu_chaleur.png`). |
+| R5 Noms de calques DXF | **Corrigé** | `Batiments_detectes_Google_Open` et `Ombres_portees_04_11_2026_09_00` : aucun nom ne finit par `_`, aucun ne dépasse 31 caractères. |
+| R8 Nom de couche GeoPackage | **Corrigé** | Un GeoPackage d'une seule couche revient sous le nom `points_test_qgis`, c'est-à-dire la table, et non plus le nom du fichier. |
+| WorldCover au plus proche | **Corrigé** | WorldCover n'a plus de `zoomedInResampler` : QGIS utilise le plus proche voisin. Sentinel-2 et le plan scanné restent en bilinéaire, ce qui est voulu. |
+
+### Points sans effet sur ce site : R4 et R7
+
+Le serveur ne recalcule les classes que si elles sont vides. Or les isochrones et la densité de `ui-collecte` ont déjà des classes enregistrées : la nouvelle règle ne s'applique donc pas ici.
+- **Isochrones :** les classes restent `5–5`, `10–10` et `15–15`. Le point d'origine (`minutes = 0`) n'a toujours **aucun symbole** dans QGIS.
+- **Densité :** les classes restent `0–0` et `0–6`.
+- **Bâti Google :** toujours 2 classes utilisées sur 5, à cause du filtre `> 100`.
+
+La correction ne pourra être vérifiée que sur une couche dont les classes sont vides, ou après avoir recalculé le style dans l'interface. Je ne l'ai pas fait : le site ne doit pas être modifié.
+
+### Non-régression
+
+- **Projet :** `read()` renvoie `True`, en EPSG:32628. Les **27 couches sur 27 sont valides**, et les 27 nœuds de l'arbre sont résolus, avec le fond XYZ en dernier. Les nombres d'objets correspondent tous au GeoPackage. Les SCR sont corrects : 32628 pour les vecteurs, 4326 pour les images, dont le nouveau plan scanné, et 3857 pour les XYZ. Aucune erreur de rendu.
+- **GeoPackage seul :** les styles sont appliqués dès l'ouverture, y compris la carte de chaleur et la population graduée.
+- **`qgis:checkvalidity` (GEOS) :** 0 géométrie invalide sur les ombres portées (2587), le plan de projet (3), le bâti Google (870) et la population (90).
+- **DXF :** `readfile`, `recover` et `audit` signalent 0 erreur, sur 3920 entités et 15 calques. `$DWGCODEPAGE` vaut ANSI_1252, et les accents sont corrects dans ezdxf et OGR. L'emprise mesure **323,283 m** dans le DXF contre **323,282 m** avec pyproj, soit un écart maximal de 0,6 mm.
+- **Aller-retour :** 22 couches sont relues, sans `fid`. Le bâtiment ajouté dans QGIS revient avec **0,0 m d'écart**, et les points créés en EPSG:32628 reviennent exactement à leur position.
+
+### Défauts restants
+
+| n° | Gravité | Défaut | Statut |
+|---|---|---|---|
+| 1 | Mineur | Point d'origine des isochrones sans symbole, classes 5–5/10–10/15–15 | Le correctif R4 ne touche pas les classes déjà enregistrées. |
+| 2 | Mineur | Densité en classes `0–0`/`0–6` ; bâti Google : 2 classes sur 5 | Même cause (R7). Il faudrait recalculer aussi les classes dégénérées : bornes en double, ou classes sans aucun objet. |
+| 3 | Mineur | Couleurs des calques DXF d'analyse (R6) | Non traité volontairement : les entités portent leur couleur. |
+| 4 | Mineur | Tables `_points`/`_lignes`/`_polygones` réimportées en 3 couches | Non traité volontairement. |
+| 5 | Mineur | Police Inter imposée | Non traité volontairement. |
+| 6 | Mineur | Sommet en double dans le croquis (`qgis:checkvalidity`, méthode QGIS) | Non traité. |
+| 7 | Mineur | Attribution OpenFreeMap sur des tuiles OSM | Non traité. |
+
+Aucun défaut n'est bloquant ni important au troisième passage.

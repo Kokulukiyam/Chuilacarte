@@ -88,9 +88,18 @@ for (const [tool, kind] of simple) {
         const c = (f.geometry as LineString).coordinates;
         f = { ...f, geometry: { type: 'LineString', coordinates: [c[0], c[c.length - 1]] } };
       }
-      addAnnotation(kind, f.geometry);
+      if (f.geometry.type === 'LineString') {
+        // sommets consécutifs identiques (tracé à main levée) supprimés
+        const cs = (f.geometry as LineString).coordinates.filter((c, i, a) => i === 0 || c[0] !== a[i - 1][0] || c[1] !== a[i - 1][1]);
+        f = { ...f, geometry: { type: 'LineString', coordinates: cs } };
+      }
+      addAnalysisOrAnnotation(kind, f);
     },
   });
+}
+
+function addAnalysisOrAnnotation(kind: AnnKind, f: Feature) {
+  addAnnotation(kind, f.geometry);
 }
 
 registerTool('draw-circle', {

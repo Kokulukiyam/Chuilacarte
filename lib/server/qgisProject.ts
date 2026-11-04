@@ -164,7 +164,7 @@ ${qmlBody(qml)}
       id: bmId,
       name: bmName,
       visible: true,
-      xml: `<maplayer type="raster"><id>${bmId}</id><datasource>${esc(`type=xyz&url=${encodeURIComponent(xyz)}&zmax=19&zmin=0`)}</datasource><layername>${esc(bmName)}</layername><srs>${srsXml(3857)}</srs><provider>wms</provider><resourceMetadata><rights>${esc(bm.attribution || '© les contributeurs d’OpenStreetMap')}</rights></resourceMetadata><pipe><rasterrenderer type="singlebandcolordata" opacity="1" band="1" alphaBand="-1"/></pipe></maplayer>`,
+      xml: `<maplayer type="raster"><id>${bmId}</id><datasource>${esc(`type=xyz&url=${encodeURIComponent(xyz)}&zmax=19&zmin=0`)}</datasource><layername>${esc(bmName)}</layername><srs>${srsXml(3857)}</srs><provider>wms</provider><resourceMetadata><rights>${esc(/tile\.openstreetmap\.org/.test(xyz) ? '© les contributeurs d’OpenStreetMap' : bm.attribution || '© les contributeurs d’OpenStreetMap')}</rights></resourceMetadata><pipe><rasterrenderer type="singlebandcolordata" opacity="1" band="1" alphaBand="-1"/></pipe></maplayer>`,
     });
 
     // 4) projet

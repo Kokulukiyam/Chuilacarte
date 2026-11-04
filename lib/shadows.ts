@@ -1,6 +1,7 @@
 // Ombres portées : position du soleil (SunCalc) et projection des volumes extrudés au sol.
 import * as SunCalc from 'suncalc';
-import type { Feature, Position } from 'geojson';
+import * as turf from '@turf/turf';
+import type { Feature, MultiPolygon, Polygon, Position } from 'geojson';
 import { fromUtm, toUtm, type UtmInfo } from './proj';
 import { niveauxOf } from './analysis';
 import type { FC } from './types';
@@ -85,5 +86,27 @@ export function shadowsFor(u: UtmInfo, layers: { fc: FC; height: (p: Record<stri
       const s = shadowOf(u, f as Feature, height(f.properties || {}), sun);
       if (s) out.push(s);
     }
-  return { type: 'FeatureCollection', features: out as any };
+  return { type: 'FeatureCollection', features: dissolve(out) as any };
+}
+
+/** Fusion des ombres (teinte uniforme là où elles se recouvrent), par paquets pour rester rapide. */
+export function dissolve(feats: Feature[], budgetMs = 2500): Feature[] {
+  if (feats.length < 2) return feats;
+  const t0 = Date.now();
+  try {
+    let level = feats as Feature<Polygon | MultiPolygon>[];
+    while (level.length > 1) {
+      const next: Feature<Polygon | MultiPolygon>[] = [];
+      for (let i = 0; i < level.length; i += 24) {
+        const chunk = level.slice(i, i + 24);
+        const u = chunk.length > 1 ? turf.union(turf.featureCollection(chunk)) : chunk[0];
+        if (u) next.push(u as Feature<Polygon | MultiPolygon>);
+        if (Date.now() - t0 > budgetMs) return feats;
+      }
+      level = next;
+    }
+    return level.map((f) => ({ ...f, properties: { type: 'ombre' } }));
+  } catch {
+    return feats;
+  }
 }
