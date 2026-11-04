@@ -22,3 +22,12 @@ Branche : `claude/chuilacarte`. Avancement global : ~90 %. Dépôt distant : htt
 
 ## Tests manuels rapides
 `scripts/test-server.sh 3400` puis ouvrir http://localhost:3400. Sites de test présents en local (non versionnés) : controle-*, test-donnees-*, ui-collecte.
+
+## Comment reprendre (Claude Code, en local)
+1. `git clone https://github.com/Kokulukiyam/Chuilacarte && cd Chuilacarte && git checkout claude/chuilacarte && npm install`.
+2. Les sites de test (`data/sites/`) ne sont pas versionnés : en recréer via l'interface (voir README § 4) pour tester.
+3. Les agents de contrôle cartographique (2e passage) et de bout en bout étaient en cours à la fin de la session cloud ; leurs rapports n'ont peut-être pas été écrits. À refaire :
+   - test de bout en bout : suivre le scénario « Agent de test de bout en bout » de SPEC.md avec Playwright sur `scripts/test-server.sh 3500`, écrire `exemples/CONTROLE_BOUT_EN_BOUT.md`, corriger chaque défaut ;
+   - contrôle cartographique : créer 3 sites neufs (Médina îlot [[-17.4475,14.6745],[-17.4445,14.6770]] tampon 300 m ; Yoff [[-17.4880,14.7480],[-17.4780,14.7560]] 300 m ; Fatick [[-16.4180,14.3330],[-16.4060,14.3420]] 500 m), collecter, nouvelle mise en page, exporter PNG/PDF/SVG dans `exemples/medina|yoff|fatick/`, regarder les images, compléter `exemples/CONTROLE_CARTOGRAPHIQUE.md`.
+4. Puis compléter `RAPPORT.md` (sections « fait / non fait / limites ») et mettre à jour ce fichier.
+5. Toujours : `npx tsc --noEmit` et `npm test` verts avant chaque commit ; commit + push après chaque étape.
