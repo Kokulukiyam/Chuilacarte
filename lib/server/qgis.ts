@@ -87,20 +87,22 @@ function labelingXml(layer: Layer, kind: Kind) {
   let size = lab?.size || 10;
   let color = lab?.color || '#1f2937';
   let bold = lab?.weight === 'bold';
+  let isExpr = false;
   if (layer.role === 'annotations') {
-    field = 'texte';
+    field = 'coalesce("texte", to_string("numero"))';
+    isExpr = true;
     size = 12;
     color = '#dc2626';
     bold = true;
   }
   if (!field) return '';
   const placement = kind === 'line' ? '2' : kind === 'marker' ? '0' : '0';
-  return `<labeling type="simple"><settings calloutType="simple"><text-style fieldName="${esc(field)}" isExpression="0" fontFamily="Inter" namedStyle="${bold ? 'Bold' : 'Regular'}" fontWeight="${bold ? 75 : 50}" fontSize="${(size * 0.75).toFixed(1)}" fontSizeUnit="Point" textColor="${qc(color)}" textOpacity="1" multilineHeight="1"><text-buffer bufferDraw="1" bufferSize="0.8" bufferSizeUnits="MM" bufferColor="${qc(lab?.halo || '#ffffff')}" bufferOpacity="1" bufferJoinStyle="128"/></text-style><placement placement="${placement}" dist="1" distUnits="MM" placementFlags="10" repeatDistance="0"/><rendering obstacle="1" scaleVisibility="0" minFeatureSize="0" upsidedownLabels="0"/></settings></labeling>`;
+  return `<labeling type="simple"><settings calloutType="simple"> <text-style fieldName="${esc(field)}" isExpression="${isExpr ? 1 : 0}" fontFamily="Inter" namedStyle="${bold ? 'Bold' : 'Regular'}" fontWeight="${bold ? 75 : 50}" fontSize="${(size * 0.75).toFixed(1)}" fontSizeUnit="Point" textColor="${qc(color)}" textOpacity="1" multilineHeight="1"><text-buffer bufferDraw="1" bufferSize="0.8" bufferSizeUnits="MM" bufferColor="${qc(lab?.halo || '#ffffff')}" bufferOpacity="1" bufferJoinStyle="128"/></text-style><placement placement="${placement}" priority="5" dist="1" distUnits="MM" placementFlags="10" repeatDistance="0"/><rendering obstacle="1" scaleVisibility="0" minFeatureSize="0" upsidedownLabels="0"/></settings></labeling>`;
 }
 
 /** Style QGIS (QML) d'une couche, aussi proche que possible du style Chuilacarte. */
-export function layerQml(layer: Layer, feats: { geometry: Geometry }[]) {
-  const kind = kindOf(layer, feats);
+export function layerQml(layer: Layer, feats: { geometry: Geometry }[], forced?: Kind) {
+  const kind = forced || kindOf(layer, feats);
   const lab = labelingXml(layer, kind);
   return `<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
 <qgis version="3.34.0" styleCategories="Symbology|Labeling|Rendering" labelsEnabled="${lab ? 1 : 0}">

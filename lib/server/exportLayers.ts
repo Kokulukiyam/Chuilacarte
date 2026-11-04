@@ -3,7 +3,7 @@ import type { Feature, Geometry } from 'geojson';
 import { readLayer } from './storage';
 import { matchAll } from '../filters';
 import { projectGeometry } from '../proj';
-import { featureColor } from '../styles';
+import { computeGradClasses, featureColor } from '../styles';
 import { hexToAci, writeDxf, type DxfEntity } from '../dxf-write';
 import { geomTypeOf, safeTable, utmWkt, writeGpkg, type GpkgLayer } from './gpkg';
 import { layerQml } from './qgis';
@@ -45,32 +45,63 @@ export function toUtmFeatures(site: Site, feats: Feature[]): Feature[] {
   return feats.map((f) => ({ ...f, geometry: projectGeometry(site.utm, f.geometry as Geometry) }));
 }
 
+const KIND_OF = (t: string) => (/Point/.test(t) ? 'marker' : /Line/.test(t) ? 'line' : 'fill') as 'marker' | 'line' | 'fill';
+const KIND_FR: Record<string, string> = { marker: 'points', line: 'lignes', fill: 'polygones' };
+
+/**
+ * GeoPackage multi-couches. Une couche à géométries mixtes (annotations, imports…) est répartie en une table
+ * par type de géométrie : QGIS n'affiche qu'un type par couche.
+ */
 export function buildGpkg(file: string, site: Site, layers: ExportLayer[], crs: 'utm' | 'wgs84' = 'utm') {
   const used = new Set<string>();
   const srsId = crs === 'utm' ? site.utm.epsg : 4326;
-  const gl: (GpkgLayer & { layerId: string })[] = layers.map(({ layer, features }) => {
+  const gl: (GpkgLayer & { layerId: string; kind: 'marker' | 'line' | 'fill'; suffix?: string })[] = [];
+  for (const { layer, features } of layers) {
     const feats = (crs === 'utm' ? toUtmFeatures(site, features) : features).map((f) => ({ geometry: f.geometry as Geometry, properties: cleanProps(layer, f.properties || {}) }));
-    const table = safeTable(layer.name, used);
-    return {
-      layerId: layer.id,
-      table,
-      title: layer.name,
-      description: `${layer.source.name} — ${layer.source.license}${layer.source.attribution ? ` — ${layer.source.attribution}` : ''} — collecté le ${layer.source.collectedAt.slice(0, 10)}`,
-      features: feats,
-      geomType: geomTypeOf(feats),
-      qml: layerQml(layer, feats),
-    };
-  });
+    const groups = new Map<string, typeof feats>();
+    for (const f of feats) {
+      const k = KIND_OF(f.geometry.type);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(f);
+    }
+    const multi = groups.size > 1;
+    for (const k of ['fill', 'line', 'marker'] as const) {
+      const g = groups.get(k);
+      if (!g) continue;
+      const style = ensureGradClasses(layer, g);
+      gl.push({
+        layerId: layer.id,
+        kind: k,
+        suffix: multi ? KIND_FR[k] : undefined,
+        table: safeTable(multi ? `${layer.name} ${KIND_FR[k]}` : layer.name, used),
+        title: multi ? `${layer.name} (${KIND_FR[k]})` : layer.name,
+        description: `${layer.source.name} — ${layer.source.license}${layer.source.attribution ? ` — ${layer.source.attribution}` : ''} — collecté le ${layer.source.collectedAt.slice(0, 10)}`,
+        features: g,
+        geomType: geomTypeOf(g),
+        qml: layerQml(style, g, k),
+      });
+    }
+  }
   writeGpkg(file, gl, crs === 'utm' ? { id: srsId, name: `WGS 84 / UTM zone ${site.utm.zone}${site.utm.south ? 'S' : 'N'}`, wkt: utmWkt(srsId) } : { id: 4326, name: 'WGS 84', wkt: '' });
-  return gl.map((g) => ({ layerId: g.layerId, table: g.table, geomType: g.geomType, count: g.features.length }));
+  return gl.map((g) => ({ layerId: g.layerId, table: g.table, geomType: g.geomType, count: g.features.length, features: g.features, kind: g.kind, suffix: g.suffix }));
+}
+
+/** Style gradué sans classes (calcul jamais fait) : on calcule les bornes sur les objets exportés. */
+export function ensureGradClasses(layer: Layer, feats: { properties: Record<string, any> }[]): Layer {
+  const g = layer.style.graduated;
+  if (layer.style.mode !== 'graduated' || !g?.field || g.classes.length) return layer;
+  const vals = feats.map((f) => Number(f.properties?.[g.field])).filter(Number.isFinite);
+  return { ...layer, style: { ...layer.style, graduated: { ...g, classes: computeGradClasses(vals, g.method, g.ramp, 5) } } };
 }
 
 export function buildDxf(site: Site, layers: ExportLayer[]): string {
   const ents: DxfEntity[] = [];
   const layerColors: Record<string, number> = {};
+  const layerLtypes: Record<string, string> = {};
   for (const { layer, features } of layers) {
     const s = layer.style;
-    layerColors[layer.name] = hexToAci(layer.geom === 'line' ? s.stroke : s.fillOpacity > 0.05 ? s.fill : s.stroke);
+    layerColors[layer.name] = layer.role === 'annotations' ? 1 : hexToAci(layer.geom === 'line' ? s.stroke : s.fillOpacity > 0.05 ? s.fill : s.stroke);
+    layerLtypes[layer.name] = s.dash === 'dash' ? 'DASHED' : s.dash === 'dot' ? 'DOT' : 'CONTINUOUS';
     for (const f of toUtmFeatures(site, features)) {
       const p = f.properties || {};
       let color: number | undefined;
@@ -81,11 +112,12 @@ export function buildDxf(site: Site, layers: ExportLayer[]): string {
         ents.push({ layer: layer.name, geometry: f.geometry, text: String(text || ''), textHeight: ((p._size || 16) * 0.2646 * 1) || 4, color });
         continue;
       }
-      ents.push({ layer: layer.name, geometry: f.geometry, color });
+      const alt = Number(p.altitude);
+      ents.push({ layer: layer.name, geometry: f.geometry, color, elevation: layer.role === 'contours' && Number.isFinite(alt) ? alt : undefined });
       if (s.label?.field && p[s.label.field] !== undefined && f.geometry.type === 'Point') {
         ents.push({ layer: `${layer.name}_etiquettes`, geometry: f.geometry, text: String(p[s.label.field]), textHeight: 2 });
       }
     }
   }
-  return writeDxf(ents, { layerColors });
+  return writeDxf(ents, { layerColors, layerLtypes });
 }

@@ -63,30 +63,29 @@ export async function buildQgisBundle(site: Site): Promise<{ zip: Buffer; name: 
       folder.file(`${base}.gpkg`, await fs.readFile(gpkgFile));
       files.push(`${base}.gpkg`);
     }
-    const byId = new Map(tables.map((t) => [t.layerId, t]));
     const epsg = site.utm.epsg;
     const projLayers: PL[] = [];
     let n = 0;
-    const mkId = (s: string) => `${slugify(s).replace(/-/g, '_')}_${(n++).toString(36)}`;
+    // QGIS exige des identifiants de couche d'au moins 11 caractères
+    const mkId = (s: string) => `${slugify(s).replace(/-/g, '_').slice(0, 30)}_${Date.now().toString(36)}${(n++).toString(36).padStart(3, '0')}`;
 
     // 2) couches dans l'ordre de la pile Chuilacarte (index 0 = dessus)
     for (const l of site.layers) {
       if (l.kind === 'vector') {
-        const t = byId.get(l.id);
-        if (!t) continue;
-        const el = nonEmpty.find((x) => x.layer.id === l.id)!;
-        const qml = layerQml(l, el.features as any);
+       for (const t of tables.filter((x) => x.layerId === l.id)) {
+        const qml = layerQml(l, t.features as any, t.kind);
         const id = mkId(l.name);
         const ds = `./${base}.gpkg|layername=${t.table}`;
+        const lname = t.suffix ? `${l.name} (${t.suffix})` : l.name;
         projLayers.push({
           id,
-          name: l.name,
+          name: lname,
           visible: l.visible,
           xml: `<maplayer type="vector" geometry="${QGIS_GEOM[t.geomType]}" wkbType="${WKB_TYPE[t.geomType]}" labelsEnabled="${/<labeling/.test(qml) ? 1 : 0}" autoRefreshEnabled="0" hasScaleBasedVisibilityFlag="0" readOnly="0" simplifyDrawingHints="1" simplifyLocal="1" simplifyMaxScale="1" simplifyAlgorithm="0" simplifyDrawingTol="1" styleCategories="AllStyleCategories">
 <id>${id}</id>
 <datasource>${esc(ds)}</datasource>
 <keywordList><value></value></keywordList>
-<layername>${esc(l.name)}</layername>
+<layername>${esc(lname)}</layername>
 <srs>${srsXml(epsg)}</srs>
 <resourceMetadata><identifier>${esc(l.id)}</identifier><title>${esc(l.name)}</title><abstract>${esc(`${l.source.name} — ${l.source.license} — ${l.source.attribution}`)}</abstract><rights>${esc(l.source.attribution)}</rights></resourceMetadata>
 <provider encoding="UTF-8">ogr</provider>
@@ -94,6 +93,7 @@ ${qmlBody(qml)}
 <blendMode>0</blendMode><featureBlendMode>0</featureBlendMode><layerOpacity>${l.opacity}</layerOpacity>
 </maplayer>`,
         });
+       }
       } else if (l.raster?.type === 'image' && l.raster.url.startsWith('files/')) {
         // image calée : PNG + world file en WGS84 (emprise) — les plans tournés passent en GeoTIFF-like via 4 coins
         const src = siteFile(site.slug, l.raster.url);
@@ -174,7 +174,7 @@ ${qmlBody(qml)}
     v(ext.coordinates);
     const pad = Math.max(x1 - x0, y1 - y0) * 0.05;
     const tree = projLayers
-      .map((p) => `<layer-tree-layer id="${p.id}" name="${esc(p.name)}" checked="${p.visible ? 'Qt::Checked' : 'Qt::Unchecked'}" expanded="1" providerKey="${/provider>gdal/.test(p.xml) ? 'gdal' : /provider>wms/.test(p.xml) ? 'wms' : 'ogr'}" source="${esc(p.xml.match(/<datasource>([\s\S]*?)<\/datasource>/)?.[1] || '')}"><customproperties/></layer-tree-layer>`)
+      .map((p) => `<layer-tree-layer id="${p.id}" name="${esc(p.name)}" checked="${p.visible ? 'Qt::Checked' : 'Qt::Unchecked'}" expanded="1" providerKey="${/provider>gdal/.test(p.xml) ? 'gdal' : /provider>wms/.test(p.xml) ? 'wms' : 'ogr'}" source="${p.xml.match(/<datasource>([\s\S]*?)<\/datasource>/)?.[1] || ''}"><customproperties/></layer-tree-layer>`)
       .join('\n');
     const attributions = [...new Set(site.layers.map((l) => l.source.attribution).filter(Boolean))];
     const qgs = `<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>

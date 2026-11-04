@@ -1,7 +1,7 @@
 'use client';
 import { useStore } from './store';
 import { makeLayer } from './site';
-import { cloneStyle, presetById } from './styles';
+import { cloneStyle, computeGradClasses, presetById } from './styles';
 import type { FC, Layer, LayerRole } from './types';
 
 /** Rang d'empilement par rôle (0 = dessus). */
@@ -67,6 +67,12 @@ export function upsertCollected(d: { site: any; data: Record<string, FC> }, meta
     layers.splice(insertIndex(layers, l.role), 0, l);
   }
   if (fc) d.data[meta.id] = fc;
+  const l = layers.find((x) => x.id === meta.id);
+  const gr = l?.style.graduated;
+  if (l && fc && l.style.mode === 'graduated' && gr?.field && !gr.classes.length) {
+    const vals = fc.features.map((f) => Number(f.properties?.[gr.field])).filter(Number.isFinite);
+    gr.classes = computeGradClasses(vals, gr.method, gr.ramp, 5);
+  }
 }
 
 export function addLayer(layer: Layer, fc?: FC, opts: { select?: boolean } = {}) {

@@ -152,7 +152,8 @@ async function fromGpkg(buf: Buffer, name: string): Promise<ImportedLayer[]> {
         features: rows
           .filter((r) => r.__g)
           .map((r) => {
-            const { __g, ...props } = r;
+            const { __g, fid: _fid, ...props } = r;
+            void _fid;
             return { type: 'Feature', geometry: JSON.parse(__g), properties: props };
           }),
       };

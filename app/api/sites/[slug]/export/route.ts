@@ -5,6 +5,7 @@ import JSZip from 'jszip';
 import { handle, type Ctx } from '@/lib/server/route';
 import { HttpError, readSite, slugify } from '@/lib/server/storage';
 import { buildDxf, buildGpkg, cleanProps, collectExportLayers } from '@/lib/server/exportLayers';
+import { dxfToBuffer } from '@/lib/dxf-write';
 
 export const runtime = 'nodejs';
 
@@ -41,8 +42,8 @@ export const POST = handle(async (req: Request, ctx: Ctx<{ slug: string }>) => {
     }
   }
   if (format === 'dxf') {
-    const txt = buildDxf(site, layers);
-    return new Response(txt, { headers: { 'content-type': 'application/dxf', 'content-disposition': `attachment; filename="${base}-utm${site.utm.zone}.dxf"` } });
+    const txt = dxfToBuffer(buildDxf(site, layers));
+    return new Response(new Uint8Array(txt), { headers: { 'content-type': 'application/dxf', 'content-disposition': `attachment; filename="${base}-utm${site.utm.zone}.dxf"` } });
   }
   throw new HttpError(400, `Format inconnu : ${format}`);
 });
