@@ -103,12 +103,12 @@ export function isolines(g: Grid, interval: number) {
         }
         if (cur.length > 1) lines.push(cur);
       }
-    const smooth = lines.filter((l) => l.length >= 3).map(chaikin);
+    const smooth = lines.filter((l) => l.length >= 4).map((l) => chaikin(chaikin(l)));
     if (!smooth.length) continue;
     feats.push({
       type: 'Feature',
       geometry: { type: 'MultiLineString', coordinates: smooth },
-      properties: { altitude: c.value, maitresse: c.value % (interval * 5) === 0 ? 'oui' : 'non' },
+      properties: { altitude: c.value, cote: `${c.value} m`, maitresse: c.value % (interval * 5) === 0 ? 'oui' : 'non' },
     });
   }
   return feats;
@@ -124,7 +124,9 @@ export const reliefCollector: Collector = {
     const g = await readDem(ctx.bbox);
     const st = demStats(g);
     if (!Number.isFinite(st.min)) throw new Error('aucune altitude disponible (zone en mer ?)');
-    const interval = contourInterval(st.max - st.min);
+    const km2 = ((ctx.bbox[2] - ctx.bbox[0]) * 111 * Math.cos((ctx.bbox[1] * Math.PI) / 180)) * ((ctx.bbox[3] - ctx.bbox[1]) * 111);
+    // grandes emprises : équidistance plus large pour rester lisible
+    const interval = Math.max(contourInterval(st.max - st.min), km2 > 4 ? 2 : 1);
     const feats = isolines(g, interval);
     return {
       layers: [

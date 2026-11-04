@@ -19,6 +19,8 @@ function overpassQuery(b: [number, number, number, number]) {
   relation["natural"~"^(water|wetland|wood)$"](${bb});
   way["waterway"](${bb});
   way["landuse"](${bb});
+  way["aeroway"="aerodrome"](${bb});
+  relation["aeroway"="aerodrome"](${bb});
   relation["landuse"](${bb});
   way["leisure"](${bb});
   relation["leisure"](${bb});
@@ -208,8 +210,8 @@ export function classifyOsm(geo: { features: Feature[] }) {
       L.green.push({ type: 'Feature', geometry: g, properties: clean({ ...base, type: t.leisure || t.landuse || t.natural }) });
       continue;
     }
-    if (isPoly && !t.building && (t.landuse || t.leisure || t.natural === 'sand' || t.natural === 'beach' || t.amenity)) {
-      L.landuse.push({ type: 'Feature', geometry: g, properties: clean({ ...base, type: t.landuse || t.leisure || t.natural || t.amenity }) });
+    if (isPoly && !t.building && (t.landuse || t.leisure || t.natural === 'sand' || t.natural === 'beach' || t.amenity || t.aeroway === 'aerodrome')) {
+      L.landuse.push({ type: 'Feature', geometry: g, properties: clean({ ...base, type: t.aeroway === 'aerodrome' ? 'aerodrome' : t.landuse || t.leisure || t.natural || t.amenity }) });
       continue;
     }
     if (!t.building && (t.amenity || t.shop || t.tourism || t.office || t.craft)) {
@@ -289,7 +291,8 @@ export const osmCollector: Collector = {
         mk('osm-verts', 'Espaces verts (OSM)', 'green', 'polygon', cutPolygons(L.green, ctx.area, ctx.bbox), 'vegetation'),
         mk('osm-eau', 'Plans d’eau (OSM)', 'water', 'polygon', cutPolygons(L.waterPoly, ctx.area, ctx.bbox), 'eau'),
         mk('osm-cours-eau', 'Cours d’eau et canaux (OSM)', 'water', 'line', L.waterLine, 'cours-eau'),
-        mk('osm-batiments', 'Bâtiments (OSM)', 'buildings', 'polygon', L.buildings, 'bati'),
+        // masqué par défaut : Google Open Buildings est plus complet au Sénégal (les niveaux OSM restent utilisés par la synthèse)
+        mk('osm-batiments', 'Bâtiments (OSM)', 'buildings', 'polygon', L.buildings, 'bati', false),
         mk('osm-voirie', 'Voirie (OSM)', 'roads', 'line', L.roads, 'voirie'),
         mk('osm-rail', 'Voies ferrées (OSM)', 'railways', 'line', L.rail, 'rail'),
         mk('osm-equipements', 'Équipements (OSM)', 'amenities', 'point', L.amenities, 'equipements'),

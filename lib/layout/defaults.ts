@@ -83,13 +83,19 @@ export function newLayout(site: Site, opts: { format?: Layout['format']; orienta
     scale: 1000,
     center: site.center,
     bearing: 0,
-    basemap: site.basemap === 'osm' ? 'couleur' : site.basemap,
+    basemap: 'papier-noms',
     font: 'Inter',
     elements,
     mapFrame,
   };
   l.scale = opts.scale || fitScale(l, siteBBox(site));
+  const sub = l.elements.find((e) => e.type === 'subtitle');
+  if (sub) sub.props.text = subtitleFor(l.scale);
   return l;
+}
+
+export function subtitleFor(scale: number) {
+  return scale <= 1000 ? 'Plan masse' : scale <= 2500 ? 'Plan de l’îlot et de ses abords' : scale <= 10000 ? 'Plan de quartier' : 'Plan de situation';
 }
 
 /** Réorganise une mise en page après changement de format / orientation, en gardant les textes et réglages. */
@@ -102,5 +108,6 @@ export function relayout(site: Site, l: Layout, format: Layout['format'], orient
     if (old) e.props = { ...e.props, ...old.props, size: e.props.size };
   }
   for (const o of l.elements) if ((o.type === 'text' || o.type === 'logo') && !elements.some((e) => e.id === o.id)) elements.push({ ...o, x: Math.min(o.x, W - o.w), y: Math.min(o.y, H - o.h) });
-  return { ...l, format, orientation, width: W, height: H, elements, mapFrame, margins };
+  const name = /^Planche (A\d|\d+×\d+)( |$)/.test(l.name) ? l.name.replace(/^Planche (A\d|\d+×\d+)/, `Planche ${format === 'custom' ? `${W}×${H}` : format}`) : l.name;
+  return { ...l, name, format, orientation, width: W, height: H, elements, mapFrame, margins, symbolScale: undefined };
 }

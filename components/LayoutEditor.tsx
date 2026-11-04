@@ -8,7 +8,7 @@ import { useConfig } from '@/lib/config';
 import { siteBBox } from '@/lib/site';
 import { newLayout, pageSize, relayout } from '@/lib/layout/defaults';
 import { fitScale, makeProjector, SCALES } from '@/lib/layout/geo';
-import { renderLayoutSvg, FONT_STACKS } from '@/lib/layout/svg';
+import { renderLayoutSvg, FONT_STACKS, defaultSymbolScale } from '@/lib/layout/svg';
 import { renderBasemap, type BasemapRender } from '@/lib/layout/basemap';
 import { exportLayout, fetchInset } from '@/lib/layout/export';
 import { flushNow } from '@/lib/autosave';
@@ -337,6 +337,10 @@ export default function LayoutEditor() {
               <input type="number" className="input w-16" value={layout.bearing || 0} step={1} onChange={(e) => set((l) => (l.bearing = Number(e.target.value) || 0))} />°
             </label>
           </div>
+          <label className="block text-[12px]">
+            Épaisseurs et symboles : ×{(layout.symbolScale ?? defaultSymbolScale(layout)).toFixed(2)}
+            <input type="range" min={0.5} max={3} step={0.05} value={layout.symbolScale ?? defaultSymbolScale(layout)} onChange={(e) => set((l) => (l.symbolScale = Number(e.target.value)))} className="w-full" data-testid="layout-symbolscale" />
+          </label>
           <div className="grid grid-cols-2 gap-2">
             <label className="text-[12px]">
               Fond de carte
@@ -599,7 +603,10 @@ function ElementProps({ layout, el, onDelete, legendGroups }: { layout: Layout; 
           {txt('projet', 'Nom du projet')}
           {txt('auteur', 'Auteur')}
           {txt('date', 'Date (vide = aujourd’hui)')}
-          {txt('mention', 'Mention (phase, n° de planche…)')}
+          {txt('moa', 'Maître d’ouvrage')}
+          {txt('phase', 'Phase (esquisse, APS…)')}
+          {txt('planche', 'N° de planche')}
+          {txt('mention', 'Mention libre')}
           {num('size', 'Taille (pt)', 4, 30)}
           <label className="flex items-center gap-2 text-[12px]">
             <input type="checkbox" checked={p.showSources !== false} onChange={(e) => set((pp) => (pp.showSources = e.target.checked))} /> Sources dans le cartouche

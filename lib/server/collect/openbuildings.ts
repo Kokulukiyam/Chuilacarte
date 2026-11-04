@@ -71,7 +71,7 @@ export const openBuildingsCollector: Collector = {
             'Google Open Buildings v3 (CC BY 4.0) ; compilation VIDA via Source Cooperative',
             'https://sites.research.google/open-buildings/',
           ),
-          stylePreset: 'bati-detecte',
+          stylePreset: 'bati',
           visible: true,
         },
       ],
