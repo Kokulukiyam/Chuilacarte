@@ -39,10 +39,14 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     if (!mapEl.current) return;
-    const map = createMap(mapEl.current, { center: [-17.45, 14.7], zoom: 11 });
-    mapRef.current = map;
-    buildBaseStyle({ basemap: 'clair' }).then((s) => map.setStyle(s));
-    map.on('style.load', () => {
+    let map: MlMap;
+    let cancelled = false;
+    (async () => {
+      const style = await buildBaseStyle({ basemap: 'clair' });
+      if (cancelled || !mapEl.current) return;
+      map = createMap(mapEl.current, { center: [-17.45, 14.7], zoom: 11, style } as any);
+      mapRef.current = map;
+      map.on('style.load', () => {
       if (!map.getSource('preview')) {
         map.addSource('preview', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addLayer({ id: 'preview-buf', type: 'line', source: 'preview', filter: ['==', ['get', 'k'], 'buf'], paint: { 'line-color': '#71717a', 'line-dasharray': [1, 2], 'line-width': 1.2 } });
@@ -56,10 +60,12 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
           drawRef.current?.setMode('static');
         };
       }
-    });
+      });
+    })();
     return () => {
+      cancelled = true;
       drawRef.current?.destroy();
-      map.remove();
+      map?.remove();
     };
   }, []);
 

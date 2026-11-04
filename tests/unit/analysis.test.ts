@@ -69,3 +69,17 @@ describe('synthèse urbaine', () => {
     expect(g.features.reduce((a: number, f: any) => a + f.properties.nombre, 0)).toBe(1);
   });
 });
+
+describe('tableau de synthèse', () => {
+  it('a toujours les mêmes lignes, quelles que soient les données de la zone (comparaison, CSV)', async () => {
+    const { synthesisRows, synthesisCsv } = await import('@/lib/analysis');
+    const empty: any = { zone: 'A', surface_m2: 1, batiments_couche: '—', nb_batiments: 0, surface_batie_m2: 0, emprise_sol: 0, surface_moy_batiment_m2: 0, batiments_renseignes: 0, plancher_renseigne_m2: 0, plancher_estime_m2: 0, densite_cos: 0, hypothese_niveaux: 2, voirie_m: {}, voirie_total_m: 0, densite_voirie_km_km2: 0, equipements: {}, equipements_total: 0, distance_equipement_m: {}, population: null, densite_hab_ha: null, espaces_verts_m2: 0, part_espaces_verts: 0, eau_m2: 0, part_eau: 0, sources: [] };
+    const full = { ...empty, zone: 'B', voirie_m: { primaire: 100, piéton: 5 }, equipements: { santé: 2 }, distance_equipement_m: { santé: 10 }, population: 10, densite_hab_ha: 1 };
+    const a = synthesisRows(empty).map((r) => r[0]);
+    const b = synthesisRows(full).map((r) => r[0]);
+    expect(a).toEqual(b);
+    const csv = synthesisCsv([empty, full]).split('\r\n');
+    expect(csv.every((l) => l.split(';').length >= 3)).toBe(true);
+    expect(csv.find((l) => l.startsWith('Voirie — voie primaire'))).toContain(';0;100');
+  });
+});

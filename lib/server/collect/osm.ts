@@ -208,7 +208,7 @@ export function classifyOsm(geo: { features: Feature[] }) {
       L.green.push({ type: 'Feature', geometry: g, properties: clean({ ...base, type: t.leisure || t.landuse || t.natural }) });
       continue;
     }
-    if (isPoly && (t.landuse || t.leisure || t.natural === 'sand' || t.natural === 'beach' || t.amenity)) {
+    if (isPoly && !t.building && (t.landuse || t.leisure || t.natural === 'sand' || t.natural === 'beach' || t.amenity)) {
       L.landuse.push({ type: 'Feature', geometry: g, properties: clean({ ...base, type: t.landuse || t.leisure || t.natural || t.amenity }) });
       continue;
     }
@@ -218,6 +218,25 @@ export function classifyOsm(geo: { features: Feature[] }) {
     }
   }
   return L;
+}
+
+/** Grands polygones (occupation du sol, espaces verts, eau) découpés à l'emprise + tampon. */
+function cutPolygons(features: Feature[], area: Feature, bbox: number[]): Feature[] {
+  const out: Feature[] = [];
+  for (const f of features) {
+    const b = turf.bbox(f as any);
+    if (b[0] >= bbox[0] && b[2] <= bbox[2] && b[1] >= bbox[1] && b[3] <= bbox[3]) {
+      out.push(f);
+      continue;
+    }
+    try {
+      const i = turf.intersect(turf.featureCollection([f as any, area as any]));
+      if (i) out.push({ ...f, geometry: i.geometry, properties: { ...f.properties, decoupe: 'oui' } });
+    } catch {
+      out.push(f);
+    }
+  }
+  return out;
 }
 
 function clipToArea(features: Feature[], area: Feature, bbox: number[]): Feature[] {
@@ -266,9 +285,9 @@ export const osmCollector: Collector = {
     });
     return {
       layers: [
-        mk('osm-occupation', 'Occupation du sol (OSM)', 'landuse', 'polygon', L.landuse, 'occupation'),
-        mk('osm-verts', 'Espaces verts (OSM)', 'green', 'polygon', L.green, 'vegetation'),
-        mk('osm-eau', 'Plans d’eau (OSM)', 'water', 'polygon', L.waterPoly, 'eau'),
+        mk('osm-occupation', 'Occupation du sol (OSM)', 'landuse', 'polygon', cutPolygons(L.landuse, ctx.area, ctx.bbox), 'occupation'),
+        mk('osm-verts', 'Espaces verts (OSM)', 'green', 'polygon', cutPolygons(L.green, ctx.area, ctx.bbox), 'vegetation'),
+        mk('osm-eau', 'Plans d’eau (OSM)', 'water', 'polygon', cutPolygons(L.waterPoly, ctx.area, ctx.bbox), 'eau'),
         mk('osm-cours-eau', 'Cours d’eau et canaux (OSM)', 'water', 'line', L.waterLine, 'cours-eau'),
         mk('osm-batiments', 'Bâtiments (OSM)', 'buildings', 'polygon', L.buildings, 'bati'),
         mk('osm-voirie', 'Voirie (OSM)', 'roads', 'line', L.roads, 'voirie'),

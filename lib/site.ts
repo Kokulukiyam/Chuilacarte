@@ -80,7 +80,7 @@ export function normalizeEmprise(fc: FC): Feature<Polygon | MultiPolygon> {
 
 export function bufferedEmprise(site: Pick<Site, 'emprise' | 'buffer'>): Feature<Polygon | MultiPolygon> {
   if (!site.buffer || site.buffer <= 0) return site.emprise;
-  const b = turf.buffer(site.emprise, site.buffer, { units: 'meters', steps: 16 });
+  const b = turf.buffer(site.emprise, site.buffer, { units: 'meters', steps: 64 });
   return (b as Feature<Polygon | MultiPolygon>) || site.emprise;
 }
 

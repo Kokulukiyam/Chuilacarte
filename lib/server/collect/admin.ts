@@ -52,7 +52,7 @@ export const adminCollector: Collector = {
       }
       for (const f of g.features) {
         try {
-          if (!turf.booleanIntersects(f, bb)) continue;
+          if (!turf.booleanIntersects(f, bb) || !turf.booleanIntersects(f, ctx.area as any)) continue;
         } catch {
           continue;
         }

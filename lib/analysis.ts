@@ -187,12 +187,28 @@ export function synthesis(site: Site, data: Record<string, FC>, z: ZoneDef, opts
   const defLevels = opts.defaultLevels ?? Math.max(1, Math.round(site.settings.defaultHeight / site.settings.levelHeight));
   if (bl) {
     sources.add(bl.source.name);
+    // niveaux connus dans les autres couches de bâti (OSM, Overture) : repris quand le centre du bâtiment y tombe
+    const donors: { f: Feature; b: number[]; n: number }[] = [];
+    for (const ol of site.layers.filter((x) => x.role === 'buildings' && x.kind === 'vector' && x.id !== bl.id && data[x.id]))
+      for (const f of data[ol.id].features) {
+        const n = niveauxOf(f.properties || {}, site.settings.levelHeight);
+        if (n && f.geometry && /Polygon/.test(f.geometry.type)) {
+          const b = turf.bbox(f as any);
+          if (bboxHit(b, zb)) donors.push({ f: f as Feature, b, n });
+        }
+      }
+    if (donors.length) for (const ol of site.layers) if (ol.role === 'buildings' && ol.id !== bl.id && data[ol.id]?.features.some((f) => niveauxOf(f.properties || {}, site.settings.levelHeight))) sources.add(`${ol.source.name} (niveaux)`);
     for (const f of filt(bl)) {
       const a = clippedArea(site, f as Feature, zone, zb);
       if (a <= 0.5) continue;
       nb++;
       bati += a;
-      const n = niveauxOf(f.properties || {}, site.settings.levelHeight);
+      let n = niveauxOf(f.properties || {}, site.settings.levelHeight);
+      if (!n && donors.length) {
+        const c = turf.centroid(f as any).geometry.coordinates;
+        const d = donors.find((x) => c[0] >= x.b[0] && c[0] <= x.b[2] && c[1] >= x.b[1] && c[1] <= x.b[3] && turf.booleanPointInPolygon(c, x.f as any));
+        if (d) n = d.n;
+      }
       if (n) {
         renseignes++;
         plancherR += a * n;
@@ -330,14 +346,16 @@ export function synthesisRows(s: Synthesis): [string, string, string | number][]
     [`Surface de plancher estimée (autres : ${s.hypothese_niveaux} niveau${s.hypothese_niveaux > 1 ? 'x' : ''})`, `${n0(s.plancher_estime_m2)} m²`, Math.round(s.plancher_estime_m2)],
     ['Densité bâtie (COS estimé)', n2(s.densite_cos), Number(s.densite_cos.toFixed(3))],
   ];
-  for (const rc of ROAD_CLASSES) if (s.voirie_m[rc.value]) rows.push([`Voirie — ${rc.label.toLowerCase()}`, `${n0(s.voirie_m[rc.value])} m`, Math.round(s.voirie_m[rc.value])]);
+  // lignes toujours identiques d'une zone à l'autre (comparaison, CSV)
+  for (const rc of ROAD_CLASSES) rows.push([`Voirie — ${rc.label.toLowerCase()}`, `${n0(s.voirie_m[rc.value] || 0)} m`, Math.round(s.voirie_m[rc.value] || 0)]);
   rows.push(['Linéaire de voirie total', `${n0(s.voirie_total_m)} m`, Math.round(s.voirie_total_m)]);
   rows.push(['Densité de voirie', `${n2(s.densite_voirie_km_km2)} km/km²`, Number(s.densite_voirie_km_km2.toFixed(2))]);
   rows.push(['Équipements dans la zone', n0(s.equipements_total), s.equipements_total]);
-  for (const f of AMENITY_FAMILIES) {
+  for (const f of AMENITY_FAMILIES.filter((x) => x.value !== 'autre')) {
     const n = s.equipements[f.value] || 0;
     const d = s.distance_equipement_m[f.value];
-    rows.push([`${f.label}`, `${n} dans la zone · plus proche à ${d === null ? '—' : `${n0(d)} m`} du centre`, `${n};${d === null ? '' : Math.round(d)}`]);
+    rows.push([`${f.label} : nombre dans la zone`, `${n}`, n]);
+    rows.push([`${f.label} : distance au plus proche (depuis le centre)`, d === null ? '—' : `${n0(d)} m`, d === null ? '' : Math.round(d)]);
   }
   rows.push(['Population estimée', s.population === null ? 'pas de donnée (collectez WorldPop)' : `${n0(s.population)} hab.`, s.population === null ? '' : Math.round(s.population)]);
   rows.push(['Densité de population', s.densite_hab_ha === null ? '—' : `${n0(s.densite_hab_ha)} hab./ha (${n0(s.densite_hab_ha * 100)} hab./km²)`, s.densite_hab_ha === null ? '' : Number(s.densite_hab_ha.toFixed(1))]);
@@ -350,7 +368,9 @@ export function synthesisCsv(list: Synthesis[]): string {
   const rows = list.map(synthesisRows);
   const head = ['Indicateur', ...list.map((s) => s.zone)];
   const lines = [head];
-  for (let i = 0; i < rows[0].length; i++) lines.push([rows[0][i][0], ...rows.map((r) => String(r[i][2]))]);
+  // séparateur « ; » et virgule décimale : lisible directement dans un tableur en français
+  const cell = (v: string | number) => (typeof v === 'number' ? String(v).replace('.', ',') : v);
+  for (let i = 0; i < rows[0].length; i++) lines.push([rows[0][i][0], ...rows.map((r) => cell(r[i][2]))]);
   lines.push(['Sources', ...list.map((s) => s.sources.join(' / '))]);
   return '﻿' + lines.map((l) => l.map((c) => (/[;"\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(';')).join('\r\n');
 }

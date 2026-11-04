@@ -30,8 +30,7 @@ export const worldpopCollector: Collector = {
         const w = g.bbox[0] + x * g.resX;
         const n = g.bbox[3] - y * g.resY;
         const cell = turf.bboxPolygon([w, n - g.resY, w + g.resX, n]);
-        const c = turf.centroid(cell).geometry.coordinates;
-        if (!turf.booleanPointInPolygon(c, ctx.area as any)) continue;
+        if (!turf.booleanIntersects(cell, ctx.area as any)) continue;
         const areaHa = turf.area(cell) / 1e4;
         total += v;
         feats.push({ type: 'Feature', geometry: cell.geometry, properties: { population: Math.round(v * 10) / 10, densite_hab_ha: Math.round((v / areaHa) * 10) / 10 } });

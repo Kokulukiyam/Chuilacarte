@@ -111,9 +111,24 @@ export class DrawController {
     });
   }
 
+  private suspendedSnap: any[] | null = null;
+
+  /** À appeler AVANT un changement de style : Terra Draw ne doit plus écrire dans des sources supprimées. */
+  suspend() {
+    if (!this.td) return;
+    try {
+      this.suspendedSnap = this.td.getSnapshot();
+      this.td.stop();
+    } catch {
+      /* déjà arrêté */
+    }
+    this.td = null;
+  }
+
   /** À appeler après un changement de style de fond (les couches de Terra Draw sont perdues). */
   restart() {
-    const snap = this.td?.getSnapshot() || [];
+    const snap = this.td?.getSnapshot() || this.suspendedSnap || [];
+    this.suspendedSnap = null;
     try {
       this.td?.stop();
     } catch {

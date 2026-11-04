@@ -20,6 +20,7 @@ export default function MapView() {
   useEffect(() => {
     const st = useStore.getState();
     const site = st.site!;
+    // fond vide au départ ; le vrai fond est appliqué par applyBase (le dessin est créé après son chargement)
     const map = createMap(el.current!, {
       center: site.view?.center || site.center,
       zoom: site.view?.zoom ?? 15,
@@ -41,6 +42,8 @@ export default function MapView() {
 
     const draw = { current: null as DrawController | null };
     map.on('style.load', () => {
+      // le style vide initial est aussitôt remplacé : on attend le vrai fond (marqué par applyBase)
+      if (!(map.getStyle()?.metadata as any)?.chuilacarte) return;
       resetApplied(map);
       ensureSelectionLayers(map);
       const s = useStore.getState();
@@ -138,6 +141,8 @@ function baseKey(site: any) {
 
 async function applyBase(map: MlMap, site: any) {
   const style = await buildBaseStyle({ basemap: site.basemap, hillshade: site.overlays?.hillshade, contours: site.overlays?.contours, sentinelUrl: sentinelForSite(site) });
+  style.metadata = { ...(style.metadata as any), chuilacarte: true };
+  mapRef.draw?.suspend();
   map.setStyle(style, { diff: false });
 }
 

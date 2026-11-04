@@ -89,7 +89,8 @@ export default function CollectDialog({ onClose }: { onClose: () => void }) {
           for (const p of pending) upsertCollected(d, p.meta, p.fc);
           if (report) d.site.reports = [...(d.site.reports || []).slice(-9), report];
         },
-        { touched: pending.filter((p) => p.fc).map((p) => p.meta.id) },
+        // les fichiers des couches sont déjà écrits par le serveur : seul site.json est à enregistrer
+        { touched: [] },
       );
       setDone(true);
       const failed = report?.items.filter((i) => !i.ok).length || 0;
@@ -177,8 +178,7 @@ export default function CollectDialog({ onClose }: { onClose: () => void }) {
                 </table>
                 <div className="mt-3 space-y-0.5 text-[11px] text-zinc-500">
                   {logs
-                    .filter((l) => !/^(Overpass : requête|API OSM : tuile)/.test(l.message))
-                    .slice(-8)
+                    .filter((l) => !/^(Overpass : requête|API OSM : tuile|Overture : lecture|WorldCover : tuile|geoBoundaries : |Relief : lecture|Sentinel-2 : rendu|WorldPop : fichier|Open Buildings : lecture)/.test(l.message))
                     .map((l, i) => (
                       <div key={i}>· {l.message}</div>
                     ))}

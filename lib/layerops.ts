@@ -1,5 +1,5 @@
 'use client';
-import { useStore } from './store';
+import { useStore, ensureFids } from './store';
 import { makeLayer } from './site';
 import { cloneStyle, computeGradClasses, presetById } from './styles';
 import type { FC, Layer, LayerRole } from './types';
@@ -67,7 +67,11 @@ export function upsertCollected(d: { site: any; data: Record<string, FC> }, meta
     if (meta.legendLabel) l.legendLabel = meta.legendLabel;
     layers.splice(insertIndex(layers, l.role), 0, l);
   }
-  if (fc) d.data[meta.id] = fc;
+  if (fc) d.data[meta.id] = ensureFids(fc);
+  if (fc) {
+    const ll = layers.find((x) => x.id === meta.id);
+    if (ll) ll.count = fc.features.length;
+  }
   const l = layers.find((x) => x.id === meta.id);
   const gr = l?.style.graduated;
   if (l && fc && l.style.mode === 'graduated' && gr?.field && !gr.classes.length) {
