@@ -9,4 +9,4 @@ data/cache
 data/tmp
 test-results
 .DS_Store
-.next-test
+.next-test*

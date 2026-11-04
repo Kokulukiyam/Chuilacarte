@@ -249,8 +249,17 @@ export async function importFile(fileName: string, buf: Buffer, opts: { allowLoc
       if (!k) throw new HttpError(400, 'KMZ sans fichier KML');
       return fromKml(await zip.files[k].async('string'), name);
     }
-    case '.zip':
-      return fromShpZip(buf, name);
+    case '.zip': {
+      // zip de Shapefile, ou dossier exporté de QGIS / Chuilacarte (GeoPackage, GeoJSON, KML…)
+      const zip = await JSZip.loadAsync(buf);
+      const names = Object.keys(zip.files).filter((f) => !zip.files[f].dir && !f.startsWith('__MACOSX'));
+      if (names.some((f) => f.toLowerCase().endsWith('.shp'))) return fromShpZip(buf, name);
+      const inner = names.filter((f) => /\.(gpkg|geojson|json|kml|csv|dxf)$/i.test(f) && !/package\.json$/i.test(f));
+      if (!inner.length) throw new HttpError(400, 'Zip sans Shapefile, GeoPackage, GeoJSON, KML, CSV ni DXF');
+      const out: ImportedLayer[] = [];
+      for (const f of inner) out.push(...(await importFile(path.basename(f), Buffer.from(await zip.files[f].async('uint8array')), opts)));
+      return out;
+    }
     case '.gpkg':
       return fromGpkg(buf, name);
     case '.csv':
