@@ -287,3 +287,80 @@ Pour toutes les couches vectorielles, 100 % des objets recoupent le tampon, sauf
     - *Preuve.* Séparateur `;`, mais décimales avec un point (`0.4644`, `221.9`). Les équipements combinent nombre et distance dans une seule cellule (`"1;135"`). La ligne « Autres » vaut toujours 0, parce qu'`amenityFamily` ne renvoie jamais `autre`.
     - *Cause.* `synthesisCsv` et `synthesisRows` (`lib/analysis.ts`).
 14. **Remarque sur les données.** La densité WorldPop de la Médina (222 hab./ha sur l'emprise, au plus 289 par carreau) est vraisemblablement inférieure à la réalité, plutôt 400 à 500 hab./ha. La valeur est fidèle au GeoTIFF : la limite vient de la source, pas de l'application. Le CES de 46 % calculé avec Google est probablement sous-estimé lui aussi pour un tissu continu. Ces deux réserves sont à mentionner sur les planches.
+
+---
+
+# Deuxième passage : après corrections
+
+Contrôle fait le 4 novembre 2026, après la reconstruction du serveur. Le coordinateur a annoncé huit corrections : synthèse et CSV, sauvegarde après collecte, WorldPop, niveaux, tampon, OSM, limites administratives, résumé de collecte.
+
+## Méthode
+
+- **Collecte.** Elle a été relancée sur les trois sites depuis l'interface (« Relancer »), avec toutes les sources cochées. J'ai suivi chaque PUT envoyé par le navigateur et interrogé `GET /api/sites/<slug>` toutes les 200 ms après « Fermer ».
+- **Interface.** J'ai refait sur chaque site les synthèses des zones `emprise` et `tampon` et la comparaison emprise / tampon, en relevant le tableau **et** le CSV exporté. Sur la Médina, j'ai refait les mesures « m » et « s ».
+- **Recalculs.** Les scripts du premier passage ont été relancés. La zone « emprise + tampon » de la synthèse est maintenant le tampon à 64 pas par quart de cercle (261 sommets, `lib/site.ts`). Je l'ai reconstruite avec le même appel `turf.buffer` pour la recalculer.
+
+## Accès réseau et sources
+
+- Médina : Overpass injoignable sur les quatre miroirs (délai de 20 s), donc **repli sur l'API OSM 0.6**. Le repli a donné les mêmes nombres d'objets qu'Overpass : 366 bâtiments, 114 voies, 28 équipements, et 44 points d'intérêt au lieu de 42.
+- Yoff : Overpass (overpass-api.de). Fatick : Overpass (maps.mail.ru).
+- Aucune source en échec. Durées de collecte, sites lancés l'un après l'autre : Médina 93 s, Yoff 91 s, Fatick 68 s.
+
+## Contrôles ciblés
+
+| Point corrigé | Résultat | Preuve |
+|---|---|---|
+| 1. Synthèse et CSV aux lignes fixes | ✅ corrigé | 40 lignes identiques pour les deux zones, dans le même ordre : toutes les classes de voirie (0 m si absente), nombre et distance sur deux lignes par famille, plus de ligne « Autres ». Médina : chemin piéton 0 m / 91 m, linéaire total 2 557 / 12 540 m, population 1 985 / 9 369. Le CSV utilise le séparateur « ; » et la virgule décimale (`0,4644` ; `221,9`). Mêmes constats à Yoff et à Fatick. |
+| 2. Seul `site.json` est réenregistré après une collecte | ✅ corrigé | Un seul PUT de `site.json` (environ 25 Ko), envoyé 1,3 s après la fin de la collecte, et **aucun PUT de couche**. `site.json` contient bien les 22 couches dès « Fermer » : vu au premier sondage, 0,01 s après. Au premier passage, il fallait réexpédier 13,4 Mo. |
+| 3. WorldPop : tous les carreaux qui recoupent la zone | ✅ corrigé | Population de la synthèse comparée à une pondération exacte sur le GeoTIFF, avec le tampon de 261 sommets : Médina 9 369 / 9 369, Yoff 85 517 / 85 518, Fatick 36 362 / 36 362 (≤ 0,001 %). Les écarts étaient de −2,6 %, −0,5 % et −2,2 % au premier passage. Carreaux : Médina 70 (59 avant), Yoff 1 000 (962), Fatick 568 (524), toujours identiques au GeoTIFF. |
+| 4. Niveaux repris d'OSM et d'Overture | ✅ corrigé | Recalcul : bâtiments Google dont le centroïde tombe dans un bâtiment OSM ou Overture qui a des niveaux. Yoff tampon : 28 / 28, plancher renseigné 48 230 m² (recalcul 48 327 m², −0,2 %). Yoff emprise : 3 / 3, 1 303 / 1 303 m². Médina tampon : 3 / 3, 273 / 273 m². Fatick : 0, faute de niveaux dans les sources. Les sources de la synthèse mentionnent « (niveaux) ». |
+| 5. Tampon à 256 sommets | ⚠️ partiel | La **zone d'analyse** et l'onglet Site utilisent le nouveau tampon de 261 sommets : Médina 45,44 ha (454 404 m²) au lieu de 454 215. En revanche, la **couche « Zone tampon » des sites existants n'est pas régénérée** : `layers/tampon.geojson` et la carte ont toujours 69 sommets, aussi bien dans le fichier que dans `__store`. Le tampon affiché et la zone calculée diffèrent donc légèrement (+0,04 % en surface). Voir le défaut R1. |
+| 6. OSM : bâti exclu de l'occupation du sol, grands polygones découpés | ✅ corrigé | Plus aucun `osm_id` commun entre `osm-occupation` et `osm-batiments`. Occupation du sol, espaces verts et eau : 0 % d'objets hors tampon. Le polygone « residential » couvrant tout Dakar est maintenant découpé (bbox −17,4472..−17,4442 à la Médina). Les « restaurant » et « fuel » qui restent sont des surfaces non bâties (aires d'activité). |
+| 7. Limites administratives | ✅ corrigé | Fatick : Fatick (région), Fatick (département) et Tattaguine. **Niakhar n'y est plus.** Médina : Dakar, Dakar, Plateau. Yoff : Dakar, Dakar, Almadies, Parcelles Assainies. Toutes recoupent le tampon. |
+| 8. Résumé de collecte | ✅ corrigé (affichage) | Les 12 à 13 notes sont affichées : surface de collecte, population, eau, altitude, Sentinel-2, WorldCover, voie d'accès OSM. Mais le rapport enregistré (`reports[]`) ne contient toujours que `date` et `items`, sans les notes : défaut R2. |
+
+## Non-régression : positions et mesures
+
+- **Positions.**
+  - Toutes les couches vectorielles recoupent toujours le tampon à 100 %, sans décalage ni inversion.
+  - Les nombres d'objets ne changent pas, sauf l'occupation du sol (bâti retiré) et WorldPop (carreaux de bord ajoutés).
+  - Recouvrement : centroïdes OSM dans Google 74,6 / 82,5 / 59,3 %, IoU médiane de 0,44 à 0,49, décalage moyen ≤ 2,1 m : identiques au premier passage.
+  - Courbes de niveau : écart médian au MNS de 0,018 / 0,015 / 0,008 m, inchangé. Sentinel-2 et WorldCover : mêmes bornes et mêmes couvertures.
+- **Mesures.**
+
+| Grandeur | Application | Recalcul UTM | Recalcul géodésique | Écart app / géodésique |
+|---|---|---|---|---|
+| Médina, surface de l'emprise | 89 465 m² | 89 464,9 | 89 383,0 | +0,09 % |
+| Médina, surface avec tampon (zone de 261 sommets) | 454 404 m² | 454 403,7 | 453 987,4 | +0,09 % |
+| Médina, distance « m » | 333,4 m | 333,36 | 333,21 | +0,06 % |
+| Médina, surface « s » | 42 155 m² | 42 154,8 | 42 116,2 | +0,09 % |
+| Médina, périmètre « s » | 832,8 m | 832,78 | 832,39 | +0,05 % |
+| Médina tampon : surface bâtie | 187 376 m² | 187 376,0 | 187 204,3 | +0,09 % |
+| Médina tampon : linéaire de voirie | 12 540 m | 12 540,3 | 12 534,5 | +0,05 % |
+| Yoff, surface avec tampon | 11 644 896 m² | 11 644 895,6 | 11 633 641,6 | +0,10 % |
+| Yoff emprise : nombre de bâtiments, surface bâtie | 13 321 ; 1 327 861 m² | 13 321 ; 1 327 861,4 | 1 326 582,7 | +0,10 % |
+| Yoff tampon : linéaire de voirie | 185 972 m | 185 972,6 | 185 883,2 | +0,05 % |
+| Fatick, surface avec tampon | 4 355 657 m² | 4 355 657,3 | 4 356 643,6 | −0,02 % |
+| Fatick tampon : surface bâtie | 598 462 m² | 598 462,2 | 598 598,6 | −0,02 % |
+| Fatick tampon : linéaire de voirie | 86 370 m | 86 370,2 | 86 380,0 | −0,01 % |
+| Fatick tampon : surfaces en eau | 70 946 m² | 70 944,6 | — | 0 |
+
+Toutes les valeurs restent sous la tolérance de 0,5 %. Les équipements, espaces verts et populations sur l'emprise sont identiques au premier passage et au recalcul.
+
+## Défauts restants
+
+- **R1. Mineur. La couche « Zone tampon » des sites existants n'est pas régénérée.**
+  - *Preuve.* `layers/tampon.geojson` des trois sites et `__store.getState().data.tampon` ont toujours 69 sommets. La zone d'analyse et l'onglet Site utilisent 261 sommets (Médina 454 215 contre 454 404 m²).
+  - *Cause.* Le fichier n'est réécrit que si la distance ou l'emprise change (`PUT /api/sites/<slug>`), ni à la collecte ni au chargement.
+- **R2. Mineur. Les notes de collecte ne sont pas enregistrées dans le rapport.**
+  - *Preuve.* `site.json`, `reports[-1]` n'a que les clés `date` et `items`. L'onglet Site (« Dernière collecte ») ne peut donc pas les réafficher.
+- **R3. Mineur. Petit écart sur le plancher renseigné.**
+  - *Preuve.* À Yoff (tampon), l'application trouve 48 230 m² et le recalcul 48 327 m² (−0,2 %), avec le même nombre de bâtiments (28).
+  - *Cause probable.* Quand plusieurs sources se recouvrent, la règle qui choisit le niveau retenu ou le point testé diffère légèrement du recalcul. L'écart reste sous la tolérance.
+- **Non traités volontairement, toujours constatés :**
+  - pas de filtre de confiance Google (19 à 23 % des empreintes < 0,70, recouvrements de 0,5 %) ;
+  - lieux Overture empilés sur des centroïdes fictifs ;
+  - voirie OSM et Overture gardée entière, jusqu'à 3,7 km au-delà du tampon à Fatick.
+- **Pour information :**
+  - les calculs restent plans en UTM 28N (+0,1 % à Dakar), sous la tolérance ;
+  - la densité WorldPop de la Médina (222 hab./ha) est probablement sous-estimée par la source elle-même.

@@ -58,6 +58,8 @@ export const POST = handle(async (req: Request) => {
     }
     return sharp({ create: { width: W, height: H, channels: 3, background: '#ffffff' }, limitInputPixels: false })
       .composite(strips)
+      .removeAlpha()
+      .toColourspace('srgb')
       .withMetadata({ density: dpi })
       .png({ compressionLevel: 6 })
       .toBuffer();
