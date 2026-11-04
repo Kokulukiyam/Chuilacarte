@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face { font-family: 'Inter'; src: url('/fonts/Inter_400Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('/fonts/Inter_700Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('/fonts/Inter_300Light.ttf') format('truetype'); font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Inter'; src: url('/fonts/Inter_400Regular_Italic.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url('/fonts/IBMPlexSans_400Regular.ttf') format('truetype'); font-weight: 400; }
+@font-face { font-family: 'IBM Plex Sans'; src: url('/fonts/IBMPlexSans_700Bold.ttf') format('truetype'); font-weight: 700; }
+@font-face { font-family: 'IBM Plex Sans'; src: url('/fonts/IBMPlexSans_300Light.ttf') format('truetype'); font-weight: 300; }
+@font-face { font-family: 'IBM Plex Sans'; src: url('/fonts/IBMPlexSans_400Regular_Italic.ttf') format('truetype'); font-weight: 400; font-style: italic; }
+@font-face { font-family: 'Jost'; src: url('/fonts/Jost_400Regular.ttf') format('truetype'); font-weight: 400; }
+@font-face { font-family: 'Jost'; src: url('/fonts/Jost_700Bold.ttf') format('truetype'); font-weight: 700; }
+@font-face { font-family: 'Jost'; src: url('/fonts/Jost_300Light.ttf') format('truetype'); font-weight: 300; }
+@font-face { font-family: 'Jost'; src: url('/fonts/Jost_400Regular_Italic.ttf') format('truetype'); font-weight: 400; font-style: italic; }
+@font-face { font-family: 'Source Serif 4'; src: url('/fonts/SourceSerif4_400Regular.ttf') format('truetype'); font-weight: 400; }
+@font-face { font-family: 'Source Serif 4'; src: url('/fonts/SourceSerif4_700Bold.ttf') format('truetype'); font-weight: 700; }
+@font-face { font-family: 'Source Serif 4'; src: url('/fonts/SourceSerif4_300Light.ttf') format('truetype'); font-weight: 300; }
+@font-face { font-family: 'Source Serif 4'; src: url('/fonts/SourceSerif4_400Regular_Italic.ttf') format('truetype'); font-weight: 400; font-style: italic; }
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+html, body { height: 100%; }
+body { @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100; font-size: 13px; }
+
+.btn { @apply inline-flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800; }
+.btn-primary { @apply inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300; }
+.btn-ghost { @apply inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] text-zinc-700 hover:bg-zinc-200/70 disabled:opacity-40 dark:text-zinc-300 dark:hover:bg-zinc-800; }
+.btn-danger { @apply inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950; }
+.input { @apply w-full rounded-md border border-zinc-300 bg-white px-2 py-1 text-[13px] outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-500; }
+.label { @apply mb-0.5 block text-[11px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400; }
+.panel { @apply bg-white dark:bg-zinc-900; }
+.section-title { @apply text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400; }
+.tool-btn { @apply flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800; }
+.tool-btn.active { @apply bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900; }
+.kbd { @apply rounded border border-zinc-300 bg-zinc-100 px-1 font-mono text-[10px] text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300; }
+table.data { @apply w-full border-collapse text-[12px]; }
+table.data th { @apply sticky top-0 z-10 border-b border-zinc-200 bg-zinc-100 px-2 py-1 text-left font-semibold dark:border-zinc-700 dark:bg-zinc-800; }
+table.data td { @apply border-b border-zinc-100 px-2 py-0.5 dark:border-zinc-800; }
+
+.maplibregl-ctrl-attrib { font-size: 10px; }
+.dark .maplibregl-ctrl-attrib { background: rgba(24,24,27,.8) !important; color: #d4d4d8; }
+.dark .maplibregl-ctrl-attrib a { color: #e4e4e7; }
+.dark .maplibregl-ctrl-group { background: #27272a; }
+.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+.maplibregl-popup-content { @apply rounded-md p-2 text-[12px] shadow-lg dark:bg-zinc-800 dark:text-zinc-100; }

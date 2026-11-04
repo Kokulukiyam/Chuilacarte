@@ -1,0 +1,156 @@
+'use client';
+import maplibregl, { type Map as MlMap, type StyleSpecification } from 'maplibre-gl';
+import mlcontour from 'maplibre-contour';
+import { BASEMAPS, GLYPHS, absUrl, basemapById, plainStyle, rasterStyle, FONT_REGULAR } from './basemaps';
+import type { Site } from './types';
+
+let demSource: any = null;
+export function getDemSource() {
+  if (!demSource) {
+    demSource = new (mlcontour as any).DemSource({
+      url: absUrl('/api/tiles/terrarium/{z}/{x}/{y}.png'),
+      encoding: 'terrarium',
+      maxzoom: 14,
+      worker: false,
+      cacheSize: 200,
+    });
+    demSource.setupMaplibre(maplibregl);
+  }
+  return demSource;
+}
+
+const styleCache = new Map<string, Promise<StyleSpecification>>();
+async function fetchStyle(url: string): Promise<StyleSpecification> {
+  let p = styleCache.get(url);
+  if (!p) {
+    p = fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`style ${r.status}`);
+        return r.json();
+      })
+      .catch((e) => {
+        styleCache.delete(url);
+        throw e;
+      });
+    styleCache.set(url, p);
+  }
+  return structuredClone(await p);
+}
+
+export interface BaseOptions {
+  basemap: string;
+  hillshade?: boolean;
+  contours?: boolean;
+  sentinelUrl?: { url: string; bounds: [number, number, number, number] } | null;
+  /** masquer les étiquettes du fond vectoriel (rendus) */
+  noLabels?: boolean;
+}
+
+/** Construit le style du fond de carte (sans les couches du site). */
+export async function buildBaseStyle(o: BaseOptions): Promise<StyleSpecification> {
+  const def = basemapById(o.basemap);
+  let style: StyleSpecification;
+  if (def.kind === 'vector') {
+    try {
+      style = await fetchStyle(def.styleUrl!);
+      style.glyphs = style.glyphs || GLYPHS;
+      if (o.noLabels) style.layers = style.layers.filter((l) => l.type !== 'symbol');
+    } catch {
+      // hors ligne : fond uni
+      style = plainStyle(def.dark ? '#18181b' : '#f4f4f5');
+    }
+  } else if (def.kind === 'raster') {
+    style = rasterStyle(def.tiles!, def.attribution);
+  } else if (def.kind === 'sentinel') {
+    style = plainStyle(def.background!);
+    if (o.sentinelUrl) {
+      const b = o.sentinelUrl.bounds;
+      style.sources['bm-sentinel'] = {
+        type: 'image',
+        url: absUrl(o.sentinelUrl.url),
+        coordinates: [
+          [b[0], b[3]],
+          [b[2], b[3]],
+          [b[2], b[1]],
+          [b[0], b[1]],
+        ],
+      } as any;
+      style.layers.push({ id: 'bm-sentinel', type: 'raster', source: 'bm-sentinel', paint: { 'raster-fade-duration': 0 } });
+    }
+  } else {
+    style = plainStyle(def.background || '#f7f5f0');
+  }
+  const wantHill = o.hillshade || def.kind === 'relief';
+  const wantContours = o.contours || def.kind === 'relief';
+  if (wantHill || wantContours) {
+    const dem = getDemSource();
+    if (wantHill) {
+      style.sources['relief-dem'] = { type: 'raster-dem', encoding: 'terrarium', tiles: [dem.sharedDemProtocolUrl], tileSize: 256, maxzoom: 14 } as any;
+      style.layers.push({
+        id: 'relief-hillshade',
+        type: 'hillshade',
+        source: 'relief-dem',
+        paint: { 'hillshade-exaggeration': 0.55, 'hillshade-shadow-color': '#5b5345', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#8a7f6b' },
+      });
+    }
+    if (wantContours) {
+      style.sources['relief-contours'] = {
+        type: 'vector',
+        tiles: [
+          dem.contourProtocolUrl({
+            multiplier: 1,
+            thresholds: { 11: [20, 100], 12: [10, 50], 13: [5, 25], 14: [2, 10], 15: [1, 5], 16: [1, 5] },
+            elevationKey: 'ele',
+            levelKey: 'level',
+            contourLayer: 'contours',
+          }),
+        ],
+        maxzoom: 16,
+      } as any;
+      style.layers.push(
+        {
+          id: 'relief-contour-lines',
+          type: 'line',
+          source: 'relief-contours',
+          'source-layer': 'contours',
+          paint: { 'line-color': '#9a7b4f', 'line-opacity': 0.55, 'line-width': ['match', ['get', 'level'], 1, 1.1, 0.5] },
+        } as any,
+        {
+          id: 'relief-contour-labels',
+          type: 'symbol',
+          source: 'relief-contours',
+          'source-layer': 'contours',
+          filter: ['>', ['get', 'level'], 0],
+          layout: { 'symbol-placement': 'line', 'text-size': 10, 'text-field': ['concat', ['number-format', ['get', 'ele'], {}], ' m'], 'text-font': FONT_REGULAR },
+          paint: { 'text-color': '#7c6440', 'text-halo-color': '#ffffff', 'text-halo-width': 1 },
+        } as any,
+      );
+    }
+  }
+  return style;
+}
+
+export function sentinelForSite(site: Site): BaseOptions['sentinelUrl'] {
+  const l = site.layers.find((x) => x.raster?.type === 'image' && x.source.name.startsWith('Sentinel-2') && x.raster.bounds);
+  if (!l) return null;
+  return { url: `/api/sites/${site.slug}/${l.raster!.url}`, bounds: l.raster!.bounds! };
+}
+
+export function attributionFor(basemap: string) {
+  return basemapById(basemap).attribution;
+}
+
+export { BASEMAPS };
+
+export function createMap(container: HTMLElement, opts: Partial<maplibregl.MapOptions> = {}): MlMap {
+  return new maplibregl.Map({
+    container,
+    style: plainStyle('#f4f4f5'),
+    center: [-17.45, 14.69],
+    zoom: 11,
+    attributionControl: { compact: false },
+    canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true },
+    maxPitch: 75,
+    ...opts,
+  } as any);
+}

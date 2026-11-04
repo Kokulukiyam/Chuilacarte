@@ -1,0 +1,47 @@
+/** Sources de tuiles raster relayées et mises en cache par /api/tiles (politesse envers les serveurs + export sans souci CORS). */
+export interface TileSourceDef {
+  url: string;
+  attribution: string;
+  maxzoom: number;
+  ext: 'png' | 'jpg';
+  tileSize?: number;
+}
+
+export const TILE_SOURCES: Record<string, TileSourceDef> = {
+  osm: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© les contributeurs d’OpenStreetMap',
+    maxzoom: 19,
+    ext: 'png',
+  },
+  esri: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Imagerie : Esri, Maxar, Earthstar Geographics et la communauté des utilisateurs SIG',
+    maxzoom: 19,
+    ext: 'jpg',
+  },
+  terrarium: {
+    url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+    attribution: 'Relief : Mapzen Terrain Tiles (SRTM, NASA ; ETOPO1, NOAA ; autres)',
+    maxzoom: 15,
+    ext: 'png',
+  },
+  'gsw-occurrence': {
+    url: 'https://storage.googleapis.com/global-surface-water/tiles2021/occurrence/{z}/{x}/{y}.png',
+    attribution: 'Eau : EC JRC/Google, Global Surface Water (Pekel et al., 2016)',
+    maxzoom: 13,
+    ext: 'png',
+  },
+  'gsw-change': {
+    url: 'https://storage.googleapis.com/global-surface-water/tiles2021/change/{z}/{x}/{y}.png',
+    attribution: 'Eau : EC JRC/Google, Global Surface Water (Pekel et al., 2016)',
+    maxzoom: 13,
+    ext: 'png',
+  },
+  'gsw-seasonality': {
+    url: 'https://storage.googleapis.com/global-surface-water/tiles2021/seasonality/{z}/{x}/{y}.png',
+    attribution: 'Eau : EC JRC/Google, Global Surface Water (Pekel et al., 2016)',
+    maxzoom: 13,
+    ext: 'png',
+  },
+};
