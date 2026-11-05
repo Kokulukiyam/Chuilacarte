@@ -1,5 +1,39 @@
 # Contrôle cartographique des exports de mise en page
 
+## 4e passage — 05/11/2026
+
+Serveur `localhost:3500` reconstruit avec les corrections ; laissé en marche.
+
+**Méthode**
+- Sur les 3 sites `exemple-*`, j'ai supprimé les mises en page, puis recréé les 6 planches par l'interface avec les réglages par défaut.
+- Les 18 exports (PNG, PDF, SVG) ont été faits un à la fois avec les boutons et remplacent les fichiers de `exemples/`.
+- Aucune erreur dans la console du navigateur. PNG A1 : 35 s, RSS max 1,8 Go.
+- Les barres d'échelle et l'échelle réelle restent exactes (Fatick A4 : 1/10 000,1 dans les deux sens ; Yoff A1 : 1/2 500,0).
+
+| Défaut | Statut | Preuve |
+|---|---|---|
+| R1 — légende tronquée (Fatick A4) | **Corrigé** | Les 22 entrées sont présentes, sur 2 colonnes, en 2,29 mm (6,5 pt) : `fatick_A4_paysage_1-10000.png`, zone 2570-3500 × 600-1520 px. Même chose dans le SVG, dont la légende contient 29 textes. |
+| R2 — groupes coupés entre colonnes | **Corrigé** | Aucun titre orphelin. Chaque groupe tient dans une seule colonne : « Occupation du sol (OSM) » en tête de la 2e colonne, avec ses entrées (Fatick A2, Médina A3 portrait). Les légendes en paysage A3 et A1 tiennent sur une colonne. Le cas « (suite) » ne s'est présenté sur aucune planche. |
+| R4 — « ; » en début de ligne | **Corrigé** | Aucune ligne des sources ne commence par « ; », « : » ou « , » dans les 6 cartouches. |
+| C12 — hiérarchie de la légende | **Partiellement corrigé** | Un espace sépare les groupes, et la lecture est bien meilleure. Mais « Bâtiments détectés », « Courbes de niveau », « Plans d'eau » et « Espaces verts » restent des entrées sans titre de groupe, à la suite de « Voirie (OSM) ». |
+| N8 — mise en page déséquilibrée | **Partiellement corrigé** | La légende des portraits passe sur 2 colonnes bien remplies (Fatick A2, Médina A3 portrait). Le cartouche reste vide aux deux tiers en portrait et en A1 : Fatick A2 et Yoff A1, où il est vide sous les sources. |
+
+**Nouveaux défauts**
+- **R5 — Sources coupées dans le cartouche de Fatick A4.** Gravité : important (attribution de licence incomplète).
+  - Symptôme : le cartouche, réduit à 15 % de la hauteur, ne contient plus toutes les sources. Le texte s'arrête sur « …fourni dans le cadre de COPERNICUS par l'Union », suivi d'un « … » **rouge** imprimé. La fin de l'attribution Copernicus, « européenne et l'ESA », manque.
+  - Preuves : `fatick_A4_paysage_1-10000.png`, zone 2570-3500 × 2020-2480 px ; même chose dans le SVG et le PDF.
+  - Les 5 autres planches ont leurs sources complètes.
+  - Cause probable : la hauteur fixe du cartouche en paysage ne tient pas compte de la longueur des sources en A4. Il faudrait réduire les sources jusqu'à un plancher, ou agrandir le cartouche, plutôt que de tronquer.
+- **R6 — Unité séparée de sa valeur.** Gravité : mineur.
+  - Symptôme : dans les légendes en colonnes étroites, « Zone tampon de 500 » passe à la ligne avant « m », et « Courbes de niveau (2 » avant « m) » (Fatick A4).
+  - Piste : une espace insécable entre le nombre et l'unité.
+- **R3** (trait visible entre les mots des noms de rues) est toujours présent : « Avenue·Blaise·Diagne », « Rue·de·Reims » sur Médina 1/1 000.
+
+Restent inchangés depuis le 3e passage : C3 (toponymie), C4 (courbes au 1/1 000), C10 (cartouche pauvre), C13 (encart de situation), N9 (police du SVG), C7 (`Identity-H`), noms du fond à leur taille A3 en A1.
+
+---
+
+
 ## 3e passage — 05/11/2026
 
 Version contrôlée : build corrigé déjà servi sur `localhost:3500` (pas de nouveau build, serveur laissé en marche).
