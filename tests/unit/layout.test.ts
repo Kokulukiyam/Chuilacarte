@@ -50,7 +50,7 @@ describe('mise en page', () => {
     expect(svg).toContain('id="legende"');
     expect(svg).toContain('id="cartouche"');
     // sources dans le cartouche ; sans cartouche, elles sont écrites dans le cadre de carte
-    expect(svg).toContain('Sources :');
+    expect(svg).toMatch(/Sources[\s\u00a0]:/);
     expect(attributions.length).toBeGreaterThan(0);
     const sans = renderLayoutSvg({ layout: { ...l, elements: l.elements.filter((e) => e.type !== 'cartouche') }, site, data }).svg;
     expect(sans).toContain('id="attribution"');
@@ -92,5 +92,26 @@ describe('mise en page : 2e contrôle cartographique', () => {
     const l = newLayout(site, { format: 'A4', scale: 10000 });
     const leg = l.elements.find((e) => e.type === 'legend')!;
     expect(leg.props.size * 0.3528).toBeGreaterThanOrEqual(6 * 0.3528 - 1e-9);
+  });
+});
+
+describe('légende : groupes et dernier recours', () => {
+  const site = createSiteObject('Test', 'test', emprise, 300);
+  it('ne tronque pas une longue légende en A4 et ne laisse pas un titre seul en bas de colonne', async () => {
+    const { makeLayer } = await import('@/lib/site');
+    const { perimeterLayers } = await import('@/lib/site');
+    const { layers, data } = perimeterLayers(site);
+    const cls = Array.from({ length: 14 }, (_, i) => ({ value: `v${i}`, color: '#888', label: `Classe numéro ${i}` }));
+    const many = [0, 1, 2].map((k) => {
+      const l = makeLayer({ id: `c${k}`, name: `Couche ${k}`, role: 'landuse', geom: 'polygon' } as any);
+      l.style = { ...l.style, mode: 'categorized', categorized: { field: 'classe', classes: cls, other: '#eee' } };
+      data[l.id] = { type: 'FeatureCollection', features: cls.map((c) => ({ type: 'Feature', properties: { classe: c.value }, geometry: emprise.features[0].geometry })) } as any;
+      return l;
+    });
+    const s2 = { ...site, layers: [...layers, ...many] };
+    const l = newLayout(s2 as any, { format: 'A4', scale: 10000 });
+    const r = renderLayoutSvg({ layout: l, site: s2 as any, data } as any);
+    expect(r.legendOverflow).toBe(false);
+    for (const c of cls) expect(r.svg).toContain(c.label);
   });
 });

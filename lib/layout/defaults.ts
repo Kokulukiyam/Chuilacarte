@@ -34,8 +34,9 @@ export function defaultElements(site: Site, W: number, H: number, orientation: '
     els.push(el('north', cx, y, nH * 0.7, nH, {}));
     els.push(el('scalebar', cx + nH * 0.8, y + nH * 0.2, col - nH * 0.8, nH * 0.8, { size: fs(7), segments: 4 }));
     y += nH + gap;
-    const cartH = Math.round(H * 0.2);
-    const insetH = Math.round(Math.min(col * 0.7, H * 0.2));
+    // cartouche et encart compacts : la place va à la légende (contrôle cartographique, 3e passage)
+    const cartH = Math.round(H * 0.15);
+    const insetH = Math.round(Math.min(col * 0.6, H * 0.17));
     const legendH = H - m - y - cartH - insetH - 2 * gap;
     els.push(el('legend', cx, y, col, legendH, { title: 'Légende', size: fs(7.5), columns: col > 110 ? 2 : 1 }));
     y += legendH + gap;
@@ -56,7 +57,7 @@ export function defaultElements(site: Site, W: number, H: number, orientation: '
   const w1 = (W - 2 * m - 2 * gap) * 0.42;
   const w2 = (W - 2 * m - 2 * gap) * 0.24;
   const w3 = W - 2 * m - 2 * gap - w1 - w2;
-  els.push(el('legend', m, by, w1, band, { title: 'Légende', size: fs(7.5), columns: 1 }));
+  els.push(el('legend', m, by, w1, band, { title: 'Légende', size: fs(7.5), columns: w1 > 110 ? 2 : 1 }));
   const nH = Math.round(14 * Math.max(0.8, sf));
   els.push(el('inset', m + w1 + gap, by, w2, band - nH - gap, { title: 'Situation' }));
   els.push(el('north', m + w1 + gap, H - m - nH, nH * 0.7, nH, {}));

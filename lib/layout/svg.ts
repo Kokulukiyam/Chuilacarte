@@ -94,7 +94,7 @@ export function wrapText(s: string, sizeMm: number, maxW: number, bold = false):
   const out: string[] = [];
   for (const para of String(s || '').split('\n')) {
     let line = '';
-    for (const word of para.split(/\s+/)) {
+    for (const word of para.split(/[ \t]+/)) {
       const t = line ? `${line} ${word}` : word;
       if (textWidth(t, sizeMm, bold) > maxW && line) {
         out.push(line);
@@ -410,10 +410,12 @@ function renderLegend(el: LayoutElement, groups: LegendGroup[], font: string, de
   const base = el.props.size || 8;
   const minPt = Math.min(base, 6);
   const cols0 = Math.max(1, el.props.columns || 1);
-  const maxCols = Math.max(cols0, Math.min(cols0 + 2, Math.floor(el.w / 45)));
+  const maxCols = Math.max(cols0, Math.min(cols0 + 2, Math.floor(el.w / 32)));
   const tries: [number, number][] = [];
   for (const f of [1, 0.92]) for (let c = cols0; c <= maxCols; c++) tries.push([base * f, c]);
   for (const f of [0.85, 0.78, 0.7]) for (let c = cols0; c <= maxCols; c++) tries.push([Math.max(minPt, base * f), c]);
+  // dernier recours : mieux vaut une légende complète un peu plus petite qu'une légende tronquée
+  for (const pt of [5.5, 5, 4.5]) if (pt < minPt) for (let c = cols0; c <= maxCols; c++) tries.push([pt, c]);
   for (const [sz, c] of tries) {
     const d: string[] = [];
     const r = legendAt(el, groups, font, d, sz, c, editor);
@@ -423,7 +425,7 @@ function renderLegend(el: LayoutElement, groups: LegendGroup[], font: string, de
     }
   }
   const d: string[] = [];
-  const r = legendAt(el, groups, font, d, Math.max(minPt, base * 0.7), maxCols, editor);
+  const r = legendAt(el, groups, font, d, Math.min(minPt, 4.5), maxCols, editor);
   defs.push(...d);
   return r;
 }
@@ -437,10 +439,11 @@ function legendAt(el: LayoutElement, groups: LegendGroup[], font: string, defs: 
   const cols = Math.max(1, columns);
   const pad = 2;
   const colW = (el.w - pad * 2 - (cols - 1) * 3) / cols;
-  const lines: { type: 'title' | 'group' | 'item'; text: string; swatch?: Swatch; gi: number; ii: number }[] = [];
+  type Line = { type: 'group' | 'item'; text: string; swatch?: Swatch; gi: number; ii: number; first?: boolean; title?: string };
+  const lines: Line[] = [];
   groups.forEach((g, gi) => {
-    if (g.title) lines.push({ type: 'group', text: g.title, gi, ii: -1 });
-    g.items.forEach((it, ii) => lines.push({ type: 'item', text: it.label, swatch: it.swatch, gi, ii }));
+    if (g.title) lines.push({ type: 'group', text: g.title, gi, ii: -1, first: true });
+    g.items.forEach((it, ii) => lines.push({ type: 'item', text: it.label, swatch: it.swatch, gi, ii, first: !g.title && ii === 0, title: g.title }));
   });
   const out: string[] = [];
   if (p.frame !== false) out.push(`<rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(el.h)}" fill="#ffffff" fill-opacity="${p.opaque === false ? 0 : 0.92}" stroke="${p.frame === false ? 'none' : '#d4d4d8'}" stroke-width="0.2"/>`);
@@ -451,30 +454,48 @@ function legendAt(el: LayoutElement, groups: LegendGroup[], font: string, defs: 
     y += lh * 1.2;
   }
   const top = y;
+  const bottom = el.y + el.h - pad + 0.01;
+  const groupGap = size * 0.6; // sépare visuellement les groupes (une couche simple ne semble pas rattachée au groupe précédent)
+  const heightOf = (ln: Line) => {
+    const wrapped = wrapText(ln.text, size, colW - (ln.type === 'item' ? sw + 2 : 0), ln.type === 'group');
+    return { wrapped, need: wrapped.length * size * 1.25 + (lh - size * 1.25) };
+  };
   let col = 0;
   let overflow = false;
-  for (const ln of lines) {
-    const textMax = colW - (ln.type === 'item' ? sw + 2 : 0);
-    const wrapped = wrapText(ln.text, size, textMax, ln.type === 'group');
-    const need = wrapped.length * size * 1.25 + (lh - size * 1.25);
-    if (y + need > el.y + el.h - pad + 0.01) {
-      if (col < cols - 1) {
-        col++;
-        y = top;
-      } else {
-        overflow = true;
-        break;
+  const nextCol = () => {
+    if (col < cols - 1) {
+      col++;
+      y = top;
+      return true;
+    }
+    overflow = true;
+    return false;
+  };
+  for (let i = 0; i < lines.length && !overflow; i++) {
+    const ln = lines[i];
+    const { wrapped, need } = heightOf(ln);
+    if (ln.first && y > top + 0.01) y += groupGap;
+    // un titre de groupe n'est jamais laissé seul en bas de colonne : il part avec sa première entrée
+    let needed = need;
+    if (ln.type === 'group' && lines[i + 1]?.type === 'item') needed += heightOf(lines[i + 1]).need;
+    if (y + needed > bottom) {
+      if (!nextCol()) break;
+      // entrée d'un groupe titré qui passe en haut de colonne : rappeler le titre
+      if (ln.type === 'item' && ln.title && !ln.first) {
+        const t = heightOf({ ...ln, type: 'group', text: `${ln.title} (suite)` });
+        t.wrapped.forEach((tx, k) => out.push(`<text x="${n2(el.x + pad + col * (colW + 3))}" y="${n2(y + k * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="700" fill="#27272a">${esc(tx)}</text>`));
+        y += t.need;
+        if (y + need > bottom && !nextCol()) break;
       }
     }
     const x = el.x + pad + col * (colW + 3);
     if (ln.type === 'group') {
-      wrapped.forEach((t, i) => out.push(`<text x="${n2(x)}" y="${n2(y + i * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="700" fill="#27272a">${esc(t)}</text>`));
-      y += need;
+      wrapped.forEach((t, k) => out.push(`<text x="${n2(x)}" y="${n2(y + k * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="700" fill="#27272a">${esc(t)}</text>`));
     } else {
       out.push(swatchSvg(ln.swatch!, x, y - swh * 0.85, sw, swh, defs, `lg-${el.id}-${ln.gi}-${ln.ii}`));
-      wrapped.forEach((t, i) => out.push(`<text x="${n2(x + sw + 2)}" y="${n2(y + i * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" fill="#27272a">${esc(t)}</text>`));
-      y += need;
+      wrapped.forEach((t, k) => out.push(`<text x="${n2(x + sw + 2)}" y="${n2(y + k * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" fill="#27272a">${esc(t)}</text>`));
     }
+    y += need;
   }
   // avertissement visible seulement dans l'éditeur, jamais imprimé
   if (overflow && editor) out.push(`<text x="${n2(el.x + el.w - pad)}" y="${n2(el.y + el.h - 1)}" font-size="${n2(size * 0.9)}" fill="#dc2626" text-anchor="end" ${fontAttr(font)}>… légende incomplète : agrandissez le cadre</text>`);
@@ -555,7 +576,7 @@ function renderCartouche(el: LayoutElement, ctx: RenderCtx, attributions: string
     out.push(`<line x1="${n2(el.x)}" y1="${n2(y - size * 0.5)}" x2="${n2(el.x + el.w)}" y2="${n2(y - size * 0.5)}" stroke="#d4d4d8" stroke-width="0.2"/>`);
     y += size * 0.5;
     const ss = Math.max(size * 0.78, 5.5 * PT);
-    const wr = wrapText(`Sources : ${attributions.join(' ; ')}`, ss, el.w - pad * 2);
+    const wr = wrapText(`Sources\u00a0: ${attributions.join('\u00a0; ')}`, ss, el.w - pad * 2);
     for (const t of wr) {
       if (y > el.y + el.h - pad) {
         out.push(`<text x="${n2(el.x + pad)}" y="${n2(y)}" ${fontAttr(font)} font-size="${n2(ss)}" fill="#dc2626">…</text>`);
