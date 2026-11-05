@@ -1,5 +1,95 @@
 # Contrôle cartographique des exports de mise en page
 
+## 3e passage — 05/11/2026
+
+Version contrôlée : build corrigé déjà servi sur `localhost:3500` (pas de nouveau build, serveur laissé en marche).
+
+**Méthode**
+- Sur les 3 sites `exemple-*`, j'ai supprimé les mises en page existantes, puis recréé les 6 mêmes planches par l'interface avec les réglages par défaut. Comme au 2e passage, seuls le format, l'orientation et l'échelle ont été changés.
+- Les 18 exports (PNG 300 dpi, PDF, SVG) ont été faits un à la fois avec les boutons, et remplacent les fichiers de `exemples/medina|yoff|fatick/`.
+- Aucune erreur dans la console du navigateur.
+- Même méthode de contrôle :
+  - vue d'ensemble, puis recadrages à pleine résolution ;
+  - PDF rastérisés par Quick Look, SVG inspectés ;
+  - barre d'échelle mesurée en pixels ;
+  - échelle réelle mesurée sur les points d'équipements, comparée aux distances géodésiques.
+
+**Mesures**
+- **Barres d'échelle :** toutes exactes. Médina 1/1 000 : 593 px = 50,2 mm avec contour, pour 50 mm attendus. Yoff A1 : 947 px = 80,2 mm, pour 80 mm. Les quatre autres : 475 ou 593 px, conformes.
+- **Échelle réelle :** médianes est-ouest et nord-sud de 1/1 000,0, 1/2 500,0, 1/4 999,9–1/5 000,1, 1/2 500,0, 1/5 000,0 et 1/10 000,1 sur les 6 planches. Aucune régression.
+- **Mémoire et durée des PNG :**
+  - RSS max du serveur entre 0,86 et 1,53 Go ;
+  - de 9 à 25 s par planche, mais **58 s pour l'A1** (16 s au 2e passage), le serveur 3500 étant partagé avec l'autre agent.
+- **PDF :** formats de page conformes, `/Ordering (Identity-H)` toujours présent 3 fois par fichier.
+- **SVG :** couches du site vectorielles (447 à 8 503 `<path>`). Les étiquettes et la mer du fond sont en images : 2 à 18 `<image>`, deux fois plus qu'au 2e passage. Toujours aucun `@font-face`.
+
+### Statut des défauts
+
+| Défaut | Statut | Preuve |
+|---|---|---|
+| N1 — sous-titre figé | **Corrigé** | Médina 1/1 000 « Plan masse » ; Médina 1/2 500 et Yoff A1 « Plan de l'îlot et de ses abords » ; 1/5 000 et 1/10 000 « Plan de quartier ». |
+| N2 — gris sans légende | **Corrigé** | Entrée « Autres » sous l'occupation du sol sur les 6 planches. Elle est rejetée dans la 2e colonne (voir R2). |
+| N3 — légende à 3,9 pt en A4 | **Corrigé pour la taille, mais régression bloquante** | Texte de légende à 2,12 mm (6 pt) et sources du cartouche plus grandes. Mais la légende de Fatick A4 est désormais **tronquée** (voir R1). |
+| N4 — noms de rues du fond | **Largement corrigé** | Texte foncé avec halo couleur papier, lisible sur le bâti : Yoff « Rue Ma Libasse Ndir » et « Avenue Seydina Limamoulaye », Médina « Rue de Reims ». Les noms tombent désormais sur l'axe des voies du site (Médina 1/1 000, 1950-2750 × 1650-2350 px). Reste un artefact, voir R3. |
+| N5 — habillage non proportionné | **Largement corrigé** | Yoff A1 : points de légende de la taille de ceux de la carte, barre d'échelle d'environ 2,8 mm d'épaisseur, « Situation » et point de l'encart agrandis. Le symbole « Emprise du site » n'est plus cassé en A4. Restent en taille A3 : les noms du fond en A1 (environ 2,5 mm de haut, lisibles mais faibles à distance), et la barre de 40 mm en A2 portrait. Mineur. |
+| N6 — mer absente | **Corrigé** | Yoff : l'océan est bleu très pâle en haut à gauche, sur les deux planches. Pas d'entrée de légende pour la mer, ce qui est acceptable pour un élément de fond. |
+| N7 — courbes au-dessus du bâti | **Corrigé** | Médina 1/1 000 (2500-3000 × 1900-2300 px) : la courbe passe sous les toits. |
+| N8 — mise en page déséquilibrée | **Toujours présent** | Cartouche vide aux deux tiers ou aux trois quarts sur les 6 planches ; barre de 40 mm en A2 portrait. La légende des portraits passe maintenant sur 2 colonnes, mais la 2e ne contient que 2 ou 3 entrées. |
+| N9 — police non incluse dans le SVG | **Toujours présent** | 0 `@font-face` dans les 6 SVG. |
+| C3 — toponymie | **Toujours présent** | Fatick : seul « Fatick » est nommé, aucune rue sur 2 km. Aéroport de Yoff sans nom. Aucun équipement ni quartier nommé, sauf « REBEUSS » à Médina. |
+| C4 — courbes | **Partiellement corrigé** | Courbes cotées, lissées, maintenant sous le bâti. Mais au 1/1 000, elles viennent toujours d'un modèle de surface à 30 m (boucles autour des îlots, sans valeur pour un plan masse). |
+| C10 — cartouche pauvre | **Toujours présent** | 4 lignes (projet, date, échelle, projection). Maître d'ouvrage, auteur, phase et planche sont vides et masqués. |
+| C12 — hiérarchie de la légende | **Partiellement corrigé** | « Courbes de niveau » n'est plus sous « Équipements », mais il est toujours rangé sans titre sous « Voirie (OSM) », entre le bâti et les cours d'eau, avec « Bâtiments » et « Espaces verts ». Les groupes sont coupés entre colonnes (R2). |
+| C13 — carte de situation | **Toujours présent** | Sénégal seul : sans océan, sans voisins, sans nom, sans cadre d'emprise. À Dakar, le point rouge est hors du trait de côte (Médina, Yoff). Seule la taille du point et du titre suit désormais le format. |
+
+### Nouveaux défauts (régressions du 3e passage)
+
+**R1 — Légende tronquée sans avertissement sur Fatick A4 1/10 000.** Gravité : **bloquant**.
+- Symptôme : la légende s'arrête après « Voie de desserte ». Elle omet toutes les autres classes visibles sur la carte :
+  - Chemin piéton ;
+  - Bâtiments détectés ;
+  - Courbes de niveau ;
+  - Plans d'eau, pourtant bien visibles en bleu ;
+  - Espaces verts ;
+  - tout le groupe « Occupation du sol » (Habitat, Emprise militaire, Cimetière, Autres).
+- Il n'y a ni « … » ni avertissement imprimé, et le cadre de la légende (70 × 59 mm) garde environ 8 mm de blanc en bas.
+- Preuves :
+  - `fatick/fatick_A4_paysage_1-10000.png`, zone 2570-3470 × 600-1420 px ;
+  - même chose dans le PDF (rendu Quick Look) ;
+  - le `<g id="legende">` du SVG ne contient que 15 textes.
+- Cause probable : le plancher de 6 pt (N3) s'applique, mais le cadre par défaut d'une planche A4 paysage est trop petit. Une fois toutes les variantes épuisées, `renderLegend` rend la dernière tentative, tronquée, sans le signaler sur la planche. Il faudrait agrandir le cadre de légende par défaut en A4 (l'encart ou le cartouche peuvent céder de la place), ou indiquer clairement la troncature. Au 1er passage, ce cas était imprimé en rouge ; maintenant, il est silencieux.
+
+**R2 — Groupes de légende coupés entre colonnes.** Gravité : important.
+- Symptôme : depuis que 2 ou 3 colonnes sont essayées avant de réduire, la 2e colonne ne contient que la fin du groupe « Occupation du sol », sans son titre :
+  - Médina A3 paysage et portrait : « Commerce » et « Autres » ;
+  - Yoff A3 : « Aéroport » et « Autres » ;
+  - Fatick A2 : « Cimetière » et « Autres ».
+- Sur Yoff A1, le titre « Occupation du sol (OSM) » est seul en bas de la 1re colonne, et ses trois entrées en haut de la 2e : titre orphelin.
+- Preuves : recadrages de légende `medina_A3_paysage_1-1000.png` (3640-4880 × 740-1840 px) et `yoff_A1_paysage_1-2500.png` (7300-9900 × 1400-3600 px).
+- Cause probable : le passage à la colonne suivante se fait ligne par ligne. Il faudrait garder un titre avec au moins sa première entrée, et de préférence un groupe entier dans une même colonne, ou équilibrer la hauteur des colonnes.
+
+**R3 — Trait visible entre les mots des noms de rues.** Gravité : mineur.
+- Symptôme : maintenant que les noms sont posés sur l'axe des voies, la voie du site se voit à travers les espaces entre les mots. Le halo s'arrête à chaque glyphe. On lit « Rue·de·Reims », « Avenue·Blaise·Diagne », « Rue·Ma·Libasse·Ndir ».
+- Preuves : Médina 1/1 000, 1950-2750 × 1650-2350 px ; Médina 1/2 500 et Yoff, partout.
+- Piste : élargir le halo (`text-halo-width`) pour qu'il couvre les espaces, ou masquer la voie sous le nom.
+
+**R4 — Ponctuation des sources en début de ligne.** Gravité : mineur.
+- Symptôme : dans le cartouche, des lignes commencent par « ; Google Open Buildings… » (Médina A3 portrait) ou par « : Copernicus » (2e passage).
+- Piste : une espace insécable avant « ; » et « : ».
+
+### Évaluation d'ensemble
+
+Les corrections N1, N2, N4, N5, N6 et N7 se voient sur les planches. Les noms de rues sont enfin lisibles et posés sur les voies, la mer apparaît et le sous-titre suit l'échelle.
+
+Le passage aux légendes multi-colonnes introduit deux régressions :
+- une légende A4 tronquée sans avertissement (bloquant) ;
+- des groupes coupés entre colonnes (important).
+
+Il reste aussi à traiter la toponymie (C3), la carte de situation (C13) et le cartouche (C10) pour un rendu de niveau professionnel.
+
+---
+
+
 ## 2e passage — 04/11/2026
 
 Version contrôlée : build de production `scripts/test-server.sh 3600` (dossier `.next-test-3600`, BUILD_ID `4v_RTN0znH0fFY_NQX3oR`), branche `claude/chuilacarte` au commit `019a5e1`. Le serveur a été arrêté à la fin du contrôle.
