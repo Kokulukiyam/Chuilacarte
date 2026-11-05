@@ -439,11 +439,12 @@ function legendAt(el: LayoutElement, groups: LegendGroup[], font: string, defs: 
   const cols = Math.max(1, columns);
   const pad = 2;
   const colW = (el.w - pad * 2 - (cols - 1) * 3) / cols;
+  const nb = (t: string) => String(t).replace(/(\d) (m²|m|km|ha|%|min|hab\.?|niv\.?)(?=$|[\s),;/])/g, '$1\u00a0$2').replace(/ \/ /g, '\u00a0/ ');
   type Line = { type: 'group' | 'item'; text: string; swatch?: Swatch; gi: number; ii: number; first?: boolean; title?: string };
   const lines: Line[] = [];
   groups.forEach((g, gi) => {
-    if (g.title) lines.push({ type: 'group', text: g.title, gi, ii: -1, first: true });
-    g.items.forEach((it, ii) => lines.push({ type: 'item', text: it.label, swatch: it.swatch, gi, ii, first: !g.title && ii === 0, title: g.title }));
+    if (g.title) lines.push({ type: 'group', text: nb(g.title), gi, ii: -1, first: true });
+    g.items.forEach((it, ii) => lines.push({ type: 'item', text: nb(it.label), swatch: it.swatch, gi, ii, first: !g.title && ii === 0, title: g.title }));
   });
   const out: string[] = [];
   if (p.frame !== false) out.push(`<rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(el.h)}" fill="#ffffff" fill-opacity="${p.opaque === false ? 0 : 0.92}" stroke="${p.frame === false ? 'none' : '#d4d4d8'}" stroke-width="0.2"/>`);
@@ -575,13 +576,16 @@ function renderCartouche(el: LayoutElement, ctx: RenderCtx, attributions: string
   if (p.showSources !== false && attributions.length && y < el.y + el.h - pad - size) {
     out.push(`<line x1="${n2(el.x)}" y1="${n2(y - size * 0.5)}" x2="${n2(el.x + el.w)}" y2="${n2(y - size * 0.5)}" stroke="#d4d4d8" stroke-width="0.2"/>`);
     y += size * 0.5;
-    const ss = Math.max(size * 0.78, 5.5 * PT);
-    const wr = wrapText(`Sources\u00a0: ${attributions.join('\u00a0; ')}`, ss, el.w - pad * 2);
+    // les sources (attributions de licence) doivent être complètes : la taille se réduit jusqu'à 4 pt pour tenir
+    const text = `Sources\u00a0: ${attributions.join('\u00a0; ')}`;
+    const room = el.y + el.h - pad - y + size * 0.78;
+    let ss = Math.max(size * 0.78, 5.5 * PT);
+    let wr = wrapText(text, ss, el.w - pad * 2);
+    while (wr.length * ss * 1.25 > room && ss > 4 * PT) {
+      ss = Math.max(4 * PT, ss * 0.92);
+      wr = wrapText(text, ss, el.w - pad * 2);
+    }
     for (const t of wr) {
-      if (y > el.y + el.h - pad) {
-        out.push(`<text x="${n2(el.x + pad)}" y="${n2(y)}" ${fontAttr(font)} font-size="${n2(ss)}" fill="#dc2626">…</text>`);
-        break;
-      }
       out.push(`<text x="${n2(el.x + pad)}" y="${n2(y)}" ${fontAttr(font)} font-size="${n2(ss)}" fill="#52525b">${esc(t)}</text>`);
       y += ss * 1.25;
     }

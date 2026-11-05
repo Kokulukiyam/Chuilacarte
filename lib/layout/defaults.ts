@@ -35,7 +35,7 @@ export function defaultElements(site: Site, W: number, H: number, orientation: '
     els.push(el('scalebar', cx + nH * 0.8, y + nH * 0.2, col - nH * 0.8, nH * 0.8, { size: fs(7), segments: 4 }));
     y += nH + gap;
     // cartouche et encart compacts : la place va à la légende (contrôle cartographique, 3e passage)
-    const cartH = Math.round(H * 0.15);
+    const cartH = Math.round(H * (sf < 0.8 ? 0.19 : 0.15)); // A4 : place pour des sources complètes
     const insetH = Math.round(Math.min(col * 0.6, H * 0.17));
     const legendH = H - m - y - cartH - insetH - 2 * gap;
     els.push(el('legend', cx, y, col, legendH, { title: 'Légende', size: fs(7.5), columns: col > 110 ? 2 : 1 }));

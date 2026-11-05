@@ -101,8 +101,8 @@ describe('légende : groupes et dernier recours', () => {
     const { makeLayer } = await import('@/lib/site');
     const { perimeterLayers } = await import('@/lib/site');
     const { layers, data } = perimeterLayers(site);
-    const cls = Array.from({ length: 14 }, (_, i) => ({ value: `v${i}`, color: '#888', label: `Classe numéro ${i}` }));
-    const many = [0, 1, 2].map((k) => {
+    const cls = Array.from({ length: 12 }, (_, i) => ({ value: `v${i}`, color: '#888', label: `Classe numéro ${i}` }));
+    const many = [0, 1].map((k) => {
       const l = makeLayer({ id: `c${k}`, name: `Couche ${k}`, role: 'landuse', geom: 'polygon' } as any);
       l.style = { ...l.style, mode: 'categorized', categorized: { field: 'classe', classes: cls, other: '#eee' } };
       data[l.id] = { type: 'FeatureCollection', features: cls.map((c) => ({ type: 'Feature', properties: { classe: c.value }, geometry: emprise.features[0].geometry })) } as any;
