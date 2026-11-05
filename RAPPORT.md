@@ -26,7 +26,7 @@ Chaque contrôle a été fait par un agent distinct de celui qui avait écrit le
 | Sources | `SOURCES.md` | 9 sources intégrées, exclusions motivées (licences non commerciales, clés) |
 | Données (Médina, Yoff, Fatick) | `exemples/CONTROLE_DONNEES.md` | 2 passages ; positions justes, mesures à moins de 0,1 % d'un calcul géodésique indépendant |
 | Compatibilité QGIS (QGIS 3.34, PyQGIS) | `exemples/CONTROLE_QGIS.md` | 3 passages ; toutes les couches se chargent en UTM avec leurs styles ; DXF en mètres |
-| Cartographie (exports regardés) | `exemples/CONTROLE_CARTOGRAPHIQUE.md` | 3 passages ; plus aucun bloquant ; échelle exacte à moins de 0,01 %, barre d'échelle exacte ; PNG A1 300 dpi en 16 s et 1,7 Go |
+| Cartographie (exports regardés) | `exemples/CONTROLE_CARTOGRAPHIQUE.md` | 5 passages ; plus aucun bloquant ; échelle exacte à moins de 0,01 %, barre d'échelle exacte ; PNG A1 300 dpi en 16 s et 1,7 Go |
 | Bout en bout (Playwright) | `exemples/CONTROLE_BOUT_EN_BOUT.md` | 39/39 étapes, 0 erreur |
 
 Les planches d'exemple (PNG 300 dpi, PDF, SVG ; A4 à A1, du 1/1 000 au 1/10 000) sont dans `exemples/medina/`, `exemples/yoff/` et `exemples/fatick/`.
@@ -44,10 +44,12 @@ Les planches d'exemple (PNG 300 dpi, PDF, SVG ; A4 à A1, du 1/1 000 au 1/10 000
 - Distance au plus proche équipement : en ligne droite depuis le centre de la zone, pas par le réseau.
 - La collecte dépend de services en ligne. Overpass est souvent saturé, l'application se replie alors sur l'API OSM 0.6, plus lente. Hors ligne, les fonctions concernées renvoient un message clair.
 
-**Limites des exports cartographiques** (défauts mineurs restants, voir le 3e passage du contrôle cartographique)
+**Limites des exports cartographiques** (défauts restants, voir le 5e passage du contrôle cartographique)
 - Toponymie limitée : les noms viennent du fond OpenFreeMap (peu de noms de rues dans les villes moyennes comme Fatick), et les équipements ne sont pas étiquetés par défaut (l'étiquette par attribut se règle dans l'onglet Couche).
 - Le placement des noms de rues est celui des tuiles OpenFreeMap : il peut être légèrement décalé par rapport aux voies OSM du site aux grandes échelles.
 - Encart de situation sommaire : contour du Sénégal et des régions, sans pays voisins ni océan.
+- Légende : les couches à style simple (bâti, eau, espaces verts, courbes) n'ont pas de titre de groupe ; cartouche peu rempli par défaut (maître d'ouvrage, auteur, phase et planche à saisir).
+- Sur l'A0 et l'A1, les noms du fond restent à la taille prévue pour l'A3.
 - Points d'équipement proches qui se superposent (pas de déplacement automatique).
 - Les étiquettes du fond restent en image (200 à 300 dpi) dans les PDF et SVG ; choisir le fond « Papier (fond uni) » pour un export 100 % vectoriel.
 - SVG : les polices ne sont pas incluses (Inter, IBM Plex Sans, Jost et Source Serif 4 sont à installer pour retravailler dans Illustrator ; elles sont dans `public/fonts/`). PDF : polices déclarées en Identity-H (avertissement de poppler sans conséquence).

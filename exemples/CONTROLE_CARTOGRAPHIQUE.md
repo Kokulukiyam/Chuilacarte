@@ -1,5 +1,20 @@
 # Contrôle cartographique des exports de mise en page
 
+## 5e passage — 05/11/2026
+
+Serveur `localhost:3500` reconstruit, laissé en marche. Sur les 3 sites `exemple-*`, j'ai supprimé les mises en page et recréé les 6 planches avec les réglages par défaut. Les 18 exports ont été faits un à la fois avec les boutons et remplacent les fichiers de `exemples/`. Aucune erreur dans la console. Échelle toujours exacte : Fatick A4 à 1/10 000,1 dans les deux sens, barre de 50,2 mm avec contour.
+
+| Défaut | Statut | Preuve |
+|---|---|---|
+| R5 — sources coupées dans le cartouche | **Corrigé** | Les 6 cartouches se terminent par « …par l'Union européenne et l'ESA », sans « … » rouge. Taille des sources : 5,5 pt en A3 et A4, 7 pt en A2, 10,1 pt en A1 ; le plancher de 4 pt n'a jamais servi. Fatick A4 : 6 lignes, dernière ligne 9 mm au-dessus du bas du cadre (zone 2570-3500 × 2100-2480 px du PNG ; même chose dans le PDF rendu par Quick Look). |
+| R6 — unité séparée de sa valeur | **Corrigé** | « Zone tampon de 500 m » et « Courbes de niveau (2 m) » sont entiers sur une ligne, avec une espace insécable dans le SVG. Aucune ligne de légende réduite à « m » ou « m) » sur les 6 planches. |
+| R1 — légende de Fatick A4 complète | **Toujours conforme** | Les 22 entrées sont présentes, sur 2 colonnes en 6 pt, avec environ 8 mm de marge en bas du cadre. |
+
+Pas de nouveau défaut sur les points contrôlés. Restent inchangés depuis le 4e passage : C3, C13, C12 (couches sans titre à la suite de « Voirie »), C10/N8, C4, R3, N9, C7, ainsi que les noms du fond à leur taille A3 en A1.
+
+---
+
+
 ## 4e passage — 05/11/2026
 
 Serveur `localhost:3500` reconstruit avec les corrections ; laissé en marche.
