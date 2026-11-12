@@ -1,5 +1,38 @@
 # Contrôle cartographique des exports de mise en page
 
+## 6e passage — 12/11/2026
+
+Serveur `localhost:3500` reconstruit, laissé en marche. Sur les 3 sites `exemple-*`, j'ai supprimé les mises en page et recréé les 6 planches avec les réglages par défaut. Les 18 exports ont été faits un à la fois et remplacent les fichiers de `exemples/`.
+- Aucune erreur dans la console. PNG A1 : 36 s, RSS max 1,8 Go.
+- Pas de régression d'échelle : Médina 1/1 000,0, Yoff A1 1/2 500,0, Fatick A4 1/10 000,1 en est-ouest comme en nord-sud ; barres de 50,2 mm avec contour.
+- Légende de Fatick A4 complète, sur 2 colonnes. Sources complètes jusqu'à « …et l'ESA » dans les 6 cartouches, sans « … » rouge.
+
+| Défaut | Statut | Preuve |
+|---|---|---|
+| C3 — toponymie | **Largement corrigé** | Les équipements sont nommés : 6 noms à Médina 1/1 000, 27 à Médina 1/2 500, 20 à Fatick A4 (« Mosquée de Fatick », « Mairie de Fatik », « Préfecture de Fatick »…). L'aéroport de Yoff est nommé. Les noms ont un halo et ne sortent pas du cadre. Fatick reste sans nom de rue (0 nom dans OSM, limite des données). Voir N10 et N11. |
+| C13 — carte de situation | **Corrigé** | Pays voisins en gris, océan bleu pâle, noms (MAURITANIE, MALI, GUINÉE-BISSAU / GUINÉE, SÉNÉGAL en gras). Le point de Dakar est sur la côte (Médina A3, zone 3640-4880 × 2180-2800 px). Petit reste : « MALI » chevauche la frontière dans l'encart étroit du portrait Médina. |
+| C12 — hiérarchie de la légende | **Corrigé** | Entrées en retrait sous leur titre, et groupes entiers dans une colonne (« Occupation du sol » en tête de la 2e colonne sur Médina A3 portrait). Les couches sans titre (bâti, courbes, plans d'eau, espaces verts) sont séparées et sans retrait, donc distinctes de la voirie. La légende se limite à ce qui est visible : Médina 1/1 000 n'affiche plus Santé, Sport, Voie tertiaire, Chemin piéton ni Autres. |
+| C10 — cartouche | **Partiellement corrigé** | « PLANCHE 2 / 2 » apparaît sur les 2es planches. La 1re planche de chaque site n'a pas de numéro : elle a été exportée quand elle était seule, et le numéro est calculé au moment de l'export, donc il n'existe pas encore. Les champs maître d'ouvrage, auteur et phase restent vides par défaut, et le cartouche reste à moitié vide en portrait. |
+| N5 — habillage proportionné | **Corrigé** | Yoff A1 : les noms du fond sont agrandis (« Rue Ma Libasse Ndir », « Avenue Seydina Limamoulaye », environ 5 mm de haut, zone 5600-7300 × 200-1600 px). Les noms d'équipements sont aussi agrandis (4,2 à 4,8 mm). |
+| N9 — police du SVG | **Corrigé** | Chaque SVG contient deux `@font-face` Inter (400 et 700) en base64. |
+| Points superposés | **Corrigé** | Médina 1/2 500 : les deux points « Sport et loisirs » (« L'empire », « Empire des enfants ») sont maintenant distincts. Aucune tache fusionnée vue sur les 6 planches. |
+| Noms de planche | **Partiellement corrigé** | « Planche A3 » et « Planche A3 (2) » à Médina. Mais la 2e planche de Yoff s'appelle « Planche A1 (2) » alors que c'est la seule A1 ; même chose pour Fatick (« Planche A4 »). Mineur. |
+
+**Nouveaux défauts**
+- **N10 — Nom affiché en double.** Gravité : mineur à important.
+  - Fatick A2 et A4 : « Stade Mame Massene Sene » est imprimé deux fois, l'un au-dessus de l'autre. Une étiquette vient du point d'équipement, l'autre de l'emprise du stade. La première recouvre le point vert du stade (Fatick A4, zone 600-1800 × 850-1600 px).
+  - Médina 1/2 500 : « Mosquée Seydou Nourou Tall » apparaît deux fois à 37 m d'écart (deux objets OSM).
+  - Piste : dédoublonner les étiquettes de même texte à faible distance, et ne pas étiqueter une emprise dont le nom est déjà porté par un équipement à l'intérieur.
+- **N11 — Noms d'équipements petits sur A4 et A3.** Gravité : mineur.
+  - Taille : 1,69 mm (4,8 pt) en A4, 2,12 mm (6 pt) en A3, sous le plancher de 6 pt retenu pour la légende en A4.
+  - Le nom de l'aéroport de Yoff (« Aéroport militaire - ancien aeroport international Léopold-Sédar-Senghor ») est imprimé en 6 pt sur une ligne et commence dans la zone d'habitat, à gauche de l'aéroport (Yoff A3) : peu lisible pour l'objet principal de la planche.
+- **N12 — Nom qui touche un point voisin.** Gravité : mineur. Yoff A1 : « Pharmacie MAME Ndiaré » touche le point « Transport » placé juste dessous.
+
+Restent ouverts depuis les passages précédents : C4 (courbes au 1/1 000 issues d'un relief à 30 m), R3 (trait de la voie visible entre les mots des noms de rues), C7 (`Identity-H` dans les PDF).
+
+---
+
+
 ## 5e passage — 05/11/2026
 
 Serveur `localhost:3500` reconstruit, laissé en marche. Sur les 3 sites `exemple-*`, j'ai supprimé les mises en page et recréé les 6 planches avec les réglages par défaut. Les 18 exports ont été faits un à la fois avec les boutons et remplacent les fichiers de `exemples/`. Aucune erreur dans la console. Échelle toujours exacte : Fatick A4 à 1/10 000,1 dans les deux sens, barre de 50,2 mm avec contour.
