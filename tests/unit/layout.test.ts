@@ -149,7 +149,7 @@ describe('encart de situation', () => {
     const l = newLayout(site, { scale: 2000 });
     const r = renderLayoutSvg({ layout: l, site, data: {}, inset } as any);
     const enc = r.svg.slice(r.svg.indexOf('<g id="encart">'));
-    expect(enc).toContain('MAURITANIE');
+    expect(enc).toContain('fill="#ecebe7"'); // voisin dessiné
     expect(enc.slice(0, enc.indexOf('</g>'))).not.toContain('clip-path');
   });
 });
