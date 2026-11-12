@@ -677,21 +677,30 @@ function renderInset(el: LayoutElement, ctx: RenderCtx, font: string) {
   const oy = el.y + pad + (availH - (bb[3] - bb[1]) * s) / 2;
   const P = (lon: number, lat: number): [number, number] => [ox + (lon - bb[0]) * c * s, oy + (bb[3] - lat) * s];
   const U = (x: number, y: number): [number, number] => [bb[0] + (x - ox) / (c * s), bb[3] - (y - oy) / s];
-  const id = `encart-${el.id}`;
   const mapH = el.h - titleH;
-  if (nb.length) {
-    out.push(`<defs><clipPath id="${id}"><rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(mapH)}"/></clipPath></defs>`);
-    out.push(`<g clip-path="url(#${id})"><rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(mapH)}" fill="#dce9f1"/>`);
-  } else out.push(`<g>`);
+  // vue de l'encart en degrés : les voisins sont découpés géométriquement (pas de clipPath : resvg plante
+  // sur un groupe masqué hors de la bande rendue lors de l'export PNG par bandes)
+  const view = [...U(el.x, el.y + mapH), ...U(el.x + el.w, el.y)];
+  const vb = [view[0], view[1], view[2], view[3]];
+  const clipped = nb
+    .map((f) => {
+      try {
+        const c = bboxClip(f as any, vb as any);
+        return (c.geometry as any).coordinates.length ? { ...f, geometry: c.geometry as Geometry } : null;
+      } catch {
+        return null;
+      }
+    })
+    .filter((f): f is NonNullable<typeof f> => !!f);
+  if (nb.length) out.push(`<rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(mapH)}" fill="#dce9f1"/>`);
   for (const f of ctx.inset?.regions?.features || []) out.push(`<path d="${pathOf(f.geometry, P)}" fill="#ffffff" stroke="#d4d4d8" stroke-width="0.12"/>`);
   for (const f of country.features) out.push(`<path d="${pathOf(f.geometry, P)}" fill="${ctx.inset?.regions ? 'none' : '#ffffff'}" stroke="none"/>`);
   // voisins par-dessus (la Gambie, enclavée, reste grise), puis le contour du pays
-  for (const f of nb) out.push(`<path d="${pathOf(f.geometry, P)}" fill="#ecebe7" stroke="#b8b6b0" stroke-width="0.15"/>`);
+  for (const f of clipped) {
+    const d = pathOf(f.geometry, P);
+    if (d) out.push(`<path d="${d}" fill="#ecebe7" stroke="#b8b6b0" stroke-width="0.15"/>`);
+  }
   for (const f of country.features) out.push(`<path d="${pathOf(f.geometry, P)}" fill="none" stroke="#52525b" stroke-width="0.3"/>`);
-  out.push(`</g>`);
-  // noms des voisins, au centre de leur partie visible
-  const view = [...U(el.x, el.y + mapH), ...U(el.x + el.w, el.y)];
-  const vb = [view[0], view[1], view[2], view[3]];
   const fsN = 1.8 * k;
   const used: LabelBox[] = [];
   const [sx0, sy0] = P(ctx.site.center[0], ctx.site.center[1]);
@@ -709,14 +718,12 @@ function renderInset(el: LayoutElement, ctx: RenderCtx, font: string) {
   };
   const cb = bb0;
   name(ctx.inset?.name || '', (cb[0] + cb[2]) / 2 + (cb[2] - cb[0]) * 0.12, (cb[1] + cb[3]) / 2, fsN * 1.15, '#3f3f46', 700);
-  for (const f of nb) {
+  for (const f of clipped) {
     try {
       // point à l'intérieur de la partie visible du pays (le nom ne chevauche pas la frontière)
-      const clip = bboxClip(f as any, vb as any);
-      if (!(clip.geometry as any).coordinates.length) continue;
-      let c = centroid(clip as any).geometry.coordinates;
-      if (!booleanPointInPolygon(c, clip as any)) c = pointOnFeature(clip as any).geometry.coordinates;
-      name(String(f.properties?.nom || ''), c[0], c[1], fsN, '#78716c', 400, clip);
+      let c = centroid(f as any).geometry.coordinates;
+      if (!booleanPointInPolygon(c, f as any)) c = pointOnFeature(f as any).geometry.coordinates;
+      name(String(f.properties?.nom || ''), c[0], c[1], fsN, '#78716c', 400, f);
     } catch {
       /* géométrie dégénérée : pas de nom */
     }

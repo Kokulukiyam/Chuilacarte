@@ -38,10 +38,7 @@ Pistes si l'on veut aller plus loin (défauts encore ouverts, voir le 5e passage
 `scripts/test-server.sh 3400` puis ouvrir http://localhost:3400. Sites de test présents en local (non versionnés) : exemple-medina, exemple-yoff, exemple-fatick.
 
 ## Comment reprendre (Claude Code, en local)
-1. `git clone https://github.com/Kokulukiyam/Chuilacarte && cd Chuilacarte && git checkout claude/chuilacarte && npm install`.
-2. Les sites de test (`data/sites/`) ne sont pas versionnés : en recréer via l'interface (voir README § 4) pour tester.
-3. Les agents de contrôle cartographique (2e passage) et de bout en bout étaient en cours à la fin de la session cloud ; leurs rapports n'ont peut-être pas été écrits. À refaire :
-   - test de bout en bout : suivre le scénario « Agent de test de bout en bout » de SPEC.md avec Playwright sur `scripts/test-server.sh 3500`, écrire `exemples/CONTROLE_BOUT_EN_BOUT.md`, corriger chaque défaut ;
-   - contrôle cartographique : créer 3 sites neufs (Médina îlot [[-17.4475,14.6745],[-17.4445,14.6770]] tampon 300 m ; Yoff [[-17.4880,14.7480],[-17.4780,14.7560]] 300 m ; Fatick [[-16.4180,14.3330],[-16.4060,14.3420]] 500 m), collecter, nouvelle mise en page, exporter PNG/PDF/SVG dans `exemples/medina|yoff|fatick/`, regarder les images, compléter `exemples/CONTROLE_CARTOGRAPHIQUE.md`.
-4. Puis compléter `RAPPORT.md` (sections « fait / non fait / limites ») et mettre à jour ce fichier.
-5. Toujours : `npx tsc --noEmit` et `npm test` verts avant chaque commit ; commit + push après chaque étape.
+1. `git clone https://github.com/Kokulukiyam/Chuilacarte && cd Chuilacarte && git checkout claude/chuilacarte && npm install` (puis `npx playwright install chromium` pour le test de bout en bout).
+2. Les sites (`data/sites/`) ne sont pas versionnés. Pour refaire les planches d'exemple, recréer les 3 sites : Médina îlot [[-17.4475,14.6745],[-17.4445,14.6770]] tampon 300 m ; Yoff [[-17.4880,14.7480],[-17.4780,14.7560]] 300 m ; Fatick [[-16.4180,14.3330],[-16.4060,14.3420]] 500 m. Collecter, puis exporter les 6 planches (voir le tableau de `exemples/CONTROLE_CARTOGRAPHIQUE.md`).
+3. Vérifier : `npx tsc --noEmit`, `npm test`, `scripts/test-server.sh 3500` puis `npx tsx tests/e2e/bout-en-bout.ts http://localhost:3500` (environ 10 min, crée puis supprime ses sites `e2e-*`).
+4. Toujours : commit + push après chaque étape, ETAT.md à jour.

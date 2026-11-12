@@ -140,3 +140,16 @@ describe('légende : ce qui est dans le cadre', () => {
     expect(g[0].items.map((i) => i.label)).toEqual(['Habitat']);
   });
 });
+
+describe('encart de situation', () => {
+  it('n’utilise pas de clipPath (resvg plante sur un groupe masqué hors de la bande rendue en PNG)', () => {
+    const site = createSiteObject('Test', 'test', emprise, 300);
+    const sq = (x0: number, y0: number, x1: number, y1: number, p: any = {}) => ({ type: 'Feature', properties: p, geometry: { type: 'Polygon', coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] } });
+    const inset = { name: 'Sénégal', country: { type: 'FeatureCollection', features: [sq(-17.5, 12.3, -11.4, 16.7)] }, neighbours: { type: 'FeatureCollection', features: [sq(-17, 16.7, -5, 27, { nom: 'Mauritanie' })] } };
+    const l = newLayout(site, { scale: 2000 });
+    const r = renderLayoutSvg({ layout: l, site, data: {}, inset } as any);
+    const enc = r.svg.slice(r.svg.indexOf('<g id="encart">'));
+    expect(enc).toContain('MAURITANIE');
+    expect(enc.slice(0, enc.indexOf('</g>'))).not.toContain('clip-path');
+  });
+});
