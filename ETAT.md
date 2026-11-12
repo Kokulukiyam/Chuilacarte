@@ -11,20 +11,13 @@ Branche : `claude/chuilacarte`. Avancement global : 100 % du périmètre (défau
 
 ## Reste à faire
 Toutes les étapes de SPEC.md sont terminées (1 à 10).
-1. Contrôle cartographique : 5 passages. Plus aucun défaut bloquant. Les régressions R1 (légende tronquée en A4) et R5 (sources coupées) sont corrigées et vérifiées. Exports définitifs dans `exemples/medina|yoff|fatick/`.
-2. Test de bout en bout : 39/39 étapes OK, 0 erreur console ou serveur.
+1. Contrôle cartographique : 7 passages. Plus aucun défaut bloquant ni important (dernier passage : 12/11/2026). Exports définitifs dans `exemples/medina|yoff|fatick/`.
+2. Test de bout en bout : 39/39 étapes OK, 0 erreur console ou serveur (relancé après chaque série de corrections, dernier passage le 12/11/2026).
 3. `RAPPORT.md` et README à jour.
 
-Pistes si l'on veut aller plus loin (défauts encore ouverts, voir le 5e passage de `exemples/CONTROLE_CARTOGRAPHIQUE.md`) :
-- C3 toponymie (étiqueter les équipements et les quartiers par défaut, sans surcharger) ;
-- C13 encart de situation (pays voisins, océan, cadre d'emprise : il faut les contours ADM0 des pays voisins) ;
-- C12 titres de groupe pour les couches simples de la légende ;
-- C10/N8 cartouche plus riche (maître d'ouvrage, phase et planche remplis par défaut) ;
-- noms du fond à leur taille A3 sur l'A1 ;
-- police incluse dans le SVG.
+Défauts mineurs restants (voir le 7e passage et `RAPPORT.md`) : nom de l'aéroport de Yoff long et débordant ; nom d'une surface qui peut couvrir son point ; numéro de planche figé à l'export ; courbes issues d'un MNS à 30 m (inutiles au 1/1 000) ; Identity-H dans les PDF ; rues de Fatick sans nom dans OSM.
 
 ## Défauts connus non traités (mineurs)
-- Points d'équipements proches qui se superposent ; peu de noms d'équipements sur les cartes.
 - Le fond vectoriel est rastérisé dans les PDF/SVG (choisir le fond « Papier » pour un export 100 % vectoriel).
 - PDF : polices en Identity-H (avertissement poppler sans conséquence).
 - Import d'un GeoPackage exporté : les tables séparées par type de géométrie reviennent en plusieurs couches.
@@ -33,6 +26,13 @@ Pistes si l'on veut aller plus loin (défauts encore ouverts, voir le 5e passage
 - Build de production réparé en local : configuration ESLint d'un dossier parent ignorée, racine du projet fixée, `scripts/test-server.sh` compatible macOS (`lsof`).
 - Playwright 1.64.1 ajouté en devDependency (script de bout en bout : `tests/e2e/bout-en-bout.ts`).
 - Relancés : l'agent de bout en bout (serveur 3500) et l'agent cartographique, 2e passage (serveur 3600, sites `exemple-medina|yoff|fatick`).
+
+## Session locale (12/11/2026) : défauts restants traités
+- Encart de situation avec pays voisins, océan et noms (sans clipPath : un clipPath faisait planter resvg pendant l'export PNG par bandes, ce qui tuait le serveur ; test de non-régression ajouté).
+- Étiquettes par défaut des équipements et des grandes emprises (4 positions, jamais hors cadre, pas de doublon à moins de 40 mm, 5,5 pt minimum), points voisins écartés.
+- Légende : retrait sous les titres de groupe, groupes non coupés, seulement ce qui est dans le cadre. Cartouche : numéro de planche. Noms de planche uniques par format.
+- SVG avec police incluse ; noms du fond agrandis selon le format.
+- Contrôle cartographique, passages 6 et 7 ; test de bout en bout 39/39.
 
 ## Tests manuels rapides
 `scripts/test-server.sh 3400` puis ouvrir http://localhost:3400. Sites de test présents en local (non versionnés) : exemple-medina, exemple-yoff, exemple-fatick.

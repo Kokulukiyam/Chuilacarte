@@ -1,5 +1,29 @@
 # Contrôle cartographique des exports de mise en page
 
+## 7e passage — 12/11/2026
+
+Serveur `localhost:3500` reconstruit, partagé avec le test de bout en bout ; je n'ai pas touché aux sites `e2e-*`. Sur les 3 sites `exemple-*`, j'ai supprimé les mises en page et recréé les 6 planches avec les réglages par défaut. Les 18 exports ont été faits un à la fois et remplacent les fichiers de `exemples/`. Aucune erreur dans la console.
+
+| Défaut | Statut | Preuve |
+|---|---|---|
+| N10 — nom en double | **Corrigé** | Aucun nom répété sur les 6 planches (comptage des étiquettes dans les SVG). « Stade Mame Massene Sene » n'apparaît plus qu'une fois (Fatick A2 et A4), comme « Mosquée Seydou Nourou Tall » (Médina 1/2 500). |
+| N11 — noms petits, aéroport mal placé | **Partiellement corrigé** | Taille minimale de 5,5 pt en A4 (1,94 mm), 6 pt en A3, 8,4 pt en A2 et 12 pt en A1. Le nom de l'aéroport de Yoff part maintenant de l'intérieur de l'aéroport, mais sa fin (« …Léopold-Sédar-Senghor ») déborde sur la bande d'habitat à l'est, et il reste écrit en 6 pt sur une ligne de 110 mm (Yoff A3, zone 2450-3350 × 1290-1360 px). |
+| N12 — nom sur un point voisin | **Corrigé pour les équipements** | Yoff A1 : « Pharmacie MAME Ndiaré » est passé au-dessus de son point et ne touche plus le point Transport. Mais le nom d'une surface peut encore couvrir un point : sur Fatick A4, « Stade Mame Massene Sene », posé au centre du stade, recouvre le point vert « Sport et loisirs » (zone 600-1800 × 850-1600 px). |
+| C10 — numéro de planche | **Corrigé, avec une réserve** | Le numéro est toujours affiché. Mais il est calculé au moment de l'export. La 1re planche de chaque site, exportée avant la création de la 2e, porte « 1 / 1 », alors que le site compte finalement 2 planches (« 2 / 2 » sur la 2e). Il faut réexporter la 1re planche pour obtenir « 1 / 2 ». |
+| Noms de planche | **Corrigé** | « Planche A3 » et « Planche A3 (2) » (Médina), « Planche A3 » et « Planche A1 » (Yoff), « Planche A2 » et « Planche A4 » (Fatick). |
+| C13 — « MALI » sur la frontière | **Corrigé** | Dans l'encart étroit du portrait Médina, « MALI » tient entièrement dans le Mali (zone 1530-2330 × 3700-4700 px). |
+
+**Pas de régression**
+- Légende de Fatick A4 complète : 2 colonnes, avec tous les groupes, du bâti à « Autres ».
+- Sources complètes jusqu'à « …et l'ESA » dans les 6 cartouches, sans « … » rouge.
+- Échelle exacte : Fatick A4 1/10 000,1 et 1/9 999,9 ; Médina 1/2 500,0 ; Yoff A3 1/4 999,9 et 1/5 000,1. Barres de 50,2 mm (A4) et 80,2 mm (A1) avec contour.
+- PNG A1 : 38 s, RSS max 1,8 Go.
+
+Restent ouverts : C4 (courbes au 1/1 000 issues d'un relief à 30 m), R3 (trait de la voie visible entre les mots des noms de rues), C7 (`Identity-H` dans les PDF), maître d'ouvrage, auteur et phase vides par défaut dans le cartouche, aucune rue nommée dans OSM à Fatick (limite des données).
+
+---
+
+
 ## 6e passage — 12/11/2026
 
 Serveur `localhost:3500` reconstruit, laissé en marche. Sur les 3 sites `exemple-*`, j'ai supprimé les mises en page et recréé les 6 planches avec les réglages par défaut. Les 18 exports ont été faits un à la fois et remplacent les fichiers de `exemples/`.
