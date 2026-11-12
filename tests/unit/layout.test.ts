@@ -153,3 +153,16 @@ describe('encart de situation', () => {
     expect(enc.slice(0, enc.indexOf('</g>'))).not.toContain('clip-path');
   });
 });
+
+describe('noms de planche', () => {
+  it('suivent le format et ne prennent un numéro qu’en cas de doublon', async () => {
+    const { relayout } = await import('@/lib/layout/defaults');
+    const site = createSiteObject('Test', 'test', emprise, 300);
+    const a = newLayout(site, { format: 'A3' });
+    const b = { ...newLayout(site, { format: 'A3' }), name: 'Planche A3 (2)' };
+    site.layouts = [a, b];
+    expect(relayout(site, b, 'A1', 'landscape').name).toBe('Planche A1');
+    expect(relayout(site, b, 'A3', 'portrait').name).toBe('Planche A3 (2)');
+    expect(relayout(site, { ...b, name: 'Plan masse' }, 'A1', 'landscape').name).toBe('Plan masse');
+  });
+});

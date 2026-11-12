@@ -208,6 +208,7 @@ interface LabelBox {
 }
 
 // ------------------------------------------------------------------ couches
+let NAMES_DONE = new Map<string, [number, number][]>(); // noms déjà écrits (anti-doublons)
 let FRAME = { x: -1e9, y: -1e9, w: 2e9, h: 2e9 }; // cadre de carte (mm) : les étiquettes qui en débordent sont omises
 let PXM = PX_MM; // mm papier par pixel de style, multiplié par le facteur de symboles de la mise en page
 
@@ -267,13 +268,15 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
       }
       drawn.push([x, y]);
       pointPos.set(f, [x, y]);
+      const hr = s.pointSize * PXM * 0.5;
+      placed.push({ x0: x - hr, y0: y - hr, x1: x + hr, y1: y + hr });
       out.push(shapeSvg(s.pointShape, x, y, s.pointSize * PXM, featureColor(s, f.properties || {}, 'fill'), s.stroke, s.strokeWidth * PXM, s.fillOpacity * op));
     }
   }
   // étiquettes, avec évitement simple des chevauchements
   if (s.label?.field) {
     const lab = s.label;
-    const size = lab.size * PXM;
+    const size = Math.max(lab.size * PXM, 5.5 * PT); // jamais sous 5,5 pt, quel que soit le format
     const bold = lab.weight === 'bold';
     for (const f of fc.features) {
       const g = f.geometry;
@@ -313,10 +316,21 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
         if (rot > 90) rot -= 180;
         if (rot < -90) rot += 180;
       } else {
-        const bb = geomBBox(g);
-        [x, y] = P((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2);
+        // au centre de la surface, ou en un point intérieur si la forme est concave (aéroport…)
+        let c: number[];
+        try {
+          c = centroid(f as any).geometry.coordinates;
+          if (!booleanPointInPolygon(c, f as any)) c = pointOnFeature(f as any).geometry.coordinates;
+        } catch {
+          const bb = geomBBox(g);
+          c = [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2];
+        }
+        [x, y] = P(c[0], c[1]);
       }
       const t = String(txt);
+      // un même nom déjà écrit à moins de 40 mm (point et emprise du même stade, doublons OSM) n'est pas répété
+      const prev = NAMES_DONE.get(t);
+      if (prev && prev.some(([u, v]) => Math.hypot(u - x, v - y) < 40)) continue;
       const w = textWidth(t, size, bold);
       const hits = (b: LabelBox) => b.x0 < FRAME.x + 0.5 || b.x1 > FRAME.x + FRAME.w - 0.5 || b.y0 < FRAME.y + 0.5 || b.y1 > FRAME.y + FRAME.h - 0.5 || placed.some((p) => !(b.x1 < p.x0 || b.x0 > p.x1 || b.y1 < p.y0 || b.y0 > p.y1));
       let anchor: 'middle' | 'start' | 'end' = 'middle';
@@ -339,6 +353,7 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
         if (hits(box)) continue;
       }
       placed.push(box);
+      NAMES_DONE.set(t, [...(NAMES_DONE.get(t) || []), [x, y]]);
       const yy = rot ? y + size * 0.35 : y;
       labels.push(
         haloText(`x="${n2(x)}" y="${n2(yy)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="${bold ? 700 : 400}" fill="${lab.color}" text-anchor="${anchor}"${rot ? ` transform="rotate(${n2(rot)} ${n2(x)} ${n2(y)})"` : ''}`, esc(t), lab.halo, size * 0.22),
@@ -599,11 +614,11 @@ function renderNorth(el: LayoutElement, layout: Layout, font: string) {
   return `<g id="fleche-nord" transform="rotate(${n2(rot)} ${n2(cx)} ${n2((top + bottom) / 2)})">${tri}<text x="${n2(cx)}" y="${n2(ny)}" ${fontAttr(font)} font-size="${n2(Math.max(2.5, s * 0.26))}" font-weight="700" text-anchor="middle" fill="#18181b">N</text></g>`;
 }
 
-/** Numéro de planche par défaut : « 2 / 3 » d'après l'ordre des mises en page du site (vide s'il n'y en a qu'une). */
+/** Numéro de planche par défaut : « 2 / 3 » d'après l'ordre des mises en page du site. */
 function planchePos(ctx: RenderCtx) {
   const ls = ctx.site.layouts || [];
   const i = ls.findIndex((x) => x.id === ctx.layout.id);
-  return i >= 0 && ls.length > 1 ? `${i + 1} / ${ls.length}` : '';
+  return i >= 0 ? `${i + 1} / ${ls.length}` : '';
 }
 
 function renderCartouche(el: LayoutElement, ctx: RenderCtx, attributions: string[], font: string) {
@@ -710,7 +725,7 @@ function renderInset(el: LayoutElement, ctx: RenderCtx, font: string) {
     const w = textWidth(t, size, weight === 700) * 1.1;
     const b = { x0: x - w / 2, y0: y - size, x1: x + w / 2, y1: y + size * 0.3 };
     // le nom d'un pays doit tenir dans ce pays (sinon, comme pour la Gambie, il est omis)
-    if (within && ![[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1]].every(([u, v]) => booleanPointInPolygon(U(u, v), within))) return;
+    if (within && ![[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1], [(b.x0 + b.x1) / 2, b.y0], [(b.x0 + b.x1) / 2, b.y1], [b.x0 + w / 4, (b.y0 + b.y1) / 2], [b.x1 - w / 4, (b.y0 + b.y1) / 2]].every(([u, v]) => booleanPointInPolygon(U(u, v), within))) return;
     if (b.x0 < el.x + 0.5 || b.x1 > el.x + el.w - 0.5 || b.y0 < el.y + 0.5 || b.y1 > el.y + mapH - 0.5) return;
     if (used.some((p) => !(b.x1 < p.x0 || b.x0 > p.x1 || b.y1 < p.y0 || b.y0 > p.y1))) return;
     used.push(b);
@@ -771,6 +786,7 @@ export function renderLayoutSvg(ctx: RenderCtx): { svg: string; attributions: st
   const pr = makeProjector(layout);
   const f = pr.frame;
   FRAME = f;
+  NAMES_DONE = new Map();
   const defs: string[] = [];
   const view = pr.bounds(5);
   const visible = site.layers.filter((l) => l.visible);

@@ -117,6 +117,13 @@ export function relayout(site: Site, l: Layout, format: Layout['format'], orient
     if (old) e.props = { ...e.props, ...old.props, size: e.props.size };
   }
   for (const o of l.elements) if ((o.type === 'text' || o.type === 'logo') && !elements.some((e) => e.id === o.id)) elements.push({ ...o, x: Math.min(o.x, W - o.w), y: Math.min(o.y, H - o.h) });
-  const name = /^Planche (A\d|\d+×\d+)( |$)/.test(l.name) ? l.name.replace(/^Planche (A\d|\d+×\d+)/, `Planche ${format === 'custom' ? `${W}×${H}` : format}`) : l.name;
+  let name = l.name;
+  if (/^Planche (A\d|\d+×\d+)( \(\d+\))?$/.test(l.name)) {
+    // nom automatique : suit le format, avec un numéro seulement si une autre planche porte déjà ce nom
+    const base = `Planche ${format === 'custom' ? `${W}×${H}` : format}`;
+    const others = new Set((site.layouts || []).filter((x) => x.id !== l.id).map((x) => x.name));
+    name = base;
+    for (let k = 2; others.has(name); k++) name = `${base} (${k})`;
+  } else if (/^Planche (A\d|\d+×\d+) /.test(l.name)) name = l.name.replace(/^Planche (A\d|\d+×\d+)/, `Planche ${format === 'custom' ? `${W}×${H}` : format}`);
   return { ...l, name, format, orientation, width: W, height: H, elements, mapFrame, margins, symbolScale: undefined };
 }
