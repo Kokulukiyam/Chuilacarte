@@ -91,6 +91,29 @@ function loadFont(file: string) {
   return p;
 }
 
+/**
+ * Inclut la police de la mise en page dans le SVG (@font-face en base64) : le rendu ne dépend plus des polices
+ * installées (Illustrator, navigateur). Les étiquettes de la carte utilisent la même police.
+ */
+export async function embedSvgFonts(svg: string, font: string): Promise<string> {
+  const files = FONT_FILES[font] || FONT_FILES.Inter;
+  const family = FONT_FILES[font] ? font : 'Inter';
+  const faces: string[] = [];
+  const want: [string, number, string][] = [['normal', 400, 'normal']];
+  if (/font-weight="700"/.test(svg)) want.push(['bold', 700, 'normal']);
+  if (/font-weight="300"/.test(svg)) want.push(['light', 300, 'normal']);
+  for (const [k, w, st] of want) {
+    const file = k === 'light' ? files.normal.replace('400Regular', '300Light') : files[k];
+    try {
+      faces.push(`@font-face{font-family:'${family}';font-weight:${w};font-style:${st};src:url(data:font/ttf;base64,${await loadFont(file)}) format('truetype');}`);
+    } catch {
+      /* police indisponible : le SVG reste lisible avec les polices de repli */
+    }
+  }
+  if (!faces.length) return svg;
+  return svg.replace(/<svg\b[^>]*>/, (m) => `${m}<style>${faces.join('')}</style>`);
+}
+
 export async function svgToPdf(svg: string, layout: Layout): Promise<Blob> {
   const doc = new jsPDF({ unit: 'mm', format: [layout.width, layout.height], orientation: layout.width > layout.height ? 'landscape' : 'portrait', compress: true });
   for (const fam of new Set([layout.font || 'Inter', 'Inter'])) {
@@ -129,7 +152,8 @@ export async function exportLayout(kind: 'png' | 'pdf' | 'svg', layout: Layout, 
   let blob: Blob;
   let name: string;
   if (kind === 'svg') {
-    blob = new Blob([built.svg], { type: 'image/svg+xml' });
+    o.onProgress?.('Inclusion des polices…');
+    blob = new Blob([await embedSvgFonts(built.svg, layout.font || 'Inter')], { type: 'image/svg+xml' });
     name = `${base}.svg`;
   } else if (kind === 'pdf') {
     o.onProgress?.('Assemblage du PDF vectoriel…');

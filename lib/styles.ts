@@ -97,6 +97,8 @@ export const PRESETS: StylePreset[] = [
         ],
         other: '#e7e5e4',
       },
+      // noms des grandes emprises (aéroport, cimetière, camp militaire…)
+      label: { field: 'nom', size: 8, color: '#57534e', halo: '#ffffff', weight: 'regular' },
       preset: 'occupation',
     }),
   },
@@ -112,6 +114,8 @@ export const PRESETS: StylePreset[] = [
       fillOpacity: 1,
       mode: 'categorized',
       categorized: { field: 'famille', classes: AMENITY_FAMILIES.map((c) => ({ value: c.value, color: c.color, label: c.label })), other: '#6b7280' },
+      // noms des équipements (les étiquettes qui se gênent sont omises)
+      label: { field: 'nom', size: 8, color: '#3f3f46', halo: '#ffffff', weight: 'regular' },
       preset: 'equipements',
     }),
   },

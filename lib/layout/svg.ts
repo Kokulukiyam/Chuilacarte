@@ -7,6 +7,7 @@ import { shapePath } from '../shapes';
 import { fmtLength, metricLength } from '../proj';
 import { attributionsFor } from '../attribution';
 import { makeProjector, PX_MM } from './geo';
+import { bboxClip, centroid, booleanPointInPolygon, pointOnFeature } from '@turf/turf';
 import { buildLegend, type LegendGroup, type Swatch } from './legend';
 
 export const PT = 0.3528; // mm par point typographique
@@ -27,7 +28,7 @@ export interface RenderCtx {
   /** étiquettes du fond (noms de rues…), posées au-dessus des couches du site */
   basemapLabels?: BasemapTile[];
   /** contour du pays et des régions pour l'encart de situation */
-  inset?: { country?: FC; regions?: FC };
+  inset?: { country?: FC; regions?: FC; neighbours?: FC; name?: string };
   /** attributions supplémentaires */
   extraAttributions?: string[];
   /** fond de carte effectivement utilisé (peut différer : fonds réservés à l'écran) */
@@ -207,6 +208,7 @@ interface LabelBox {
 }
 
 // ------------------------------------------------------------------ couches
+let FRAME = { x: -1e9, y: -1e9, w: 2e9, h: 2e9 }; // cadre de carte (mm) : les étiquettes qui en débordent sont omises
 let PXM = PX_MM; // mm papier par pixel de style, multiplié par le facteur de symboles de la mise en page
 
 function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [number, number], view: number[], defs: string[], labels: string[], placed: LabelBox[], site: Site, font: string): string {
@@ -219,6 +221,7 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
     defs.push(hatchDef(hatchId, s.hatch, s.hatchColor));
   }
   const pointFeats: Feature[] = [];
+  const pointPos = new Map<Feature, [number, number]>();
   for (const f of fc.features) {
     const g = f.geometry;
     if (!g) continue;
@@ -244,11 +247,26 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
       out.push(`<path d="${d}" fill="none" stroke="${col}" stroke-width="${n2(sw)}" stroke-linejoin="round" stroke-linecap="${s.dash === 'solid' ? 'round' : 'butt'}"${s.strokeOpacity * op < 1 ? ` stroke-opacity="${n2(s.strokeOpacity * op)}"` : ''}${dashAttr(s.dash, sw)}/>`);
     }
   }
+  // points trop proches : écartés radialement juste assez pour ne plus se recouvrir (déplacement cartographique, ≤ 1 symbole)
+  const drawn: [number, number][] = [];
+  const minD = s.pointSize * PXM * 1.05;
   for (const f of pointFeats) {
     const g = f.geometry as any;
     const cs: Position[] = g.type === 'Point' ? [g.coordinates] : g.coordinates;
     for (const c of cs) {
-      const [x, y] = P(c[0], c[1]);
+      let [x, y] = P(c[0], c[1]);
+      for (let k = 0; k < 3; k++) {
+        const near = drawn.find(([u, v]) => Math.hypot(x - u, y - v) < minD);
+        if (!near) break;
+        const dx = x - near[0];
+        const dy = y - near[1];
+        const d = Math.hypot(dx, dy);
+        const a = d > 1e-6 ? Math.atan2(dy, dx) : (drawn.length * 2.39996) % (2 * Math.PI);
+        x = near[0] + Math.cos(a) * minD;
+        y = near[1] + Math.sin(a) * minD;
+      }
+      drawn.push([x, y]);
+      pointPos.set(f, [x, y]);
       out.push(shapeSvg(s.pointShape, x, y, s.pointSize * PXM, featureColor(s, f.properties || {}, 'fill'), s.stroke, s.strokeWidth * PXM, s.fillOpacity * op));
     }
   }
@@ -263,9 +281,19 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
       if (!g || txt === undefined || txt === null || txt === '' || !matchAll(f.properties || {}, l.filter)) continue;
       if (!inside(geomBBox(g), view)) continue;
       let x: number, y: number, rot = 0;
+      let cands: { x: number; y: number; anchor: 'middle' | 'start' | 'end' }[] | null = null;
       if (g.type === 'Point') {
-        [x, y] = P(g.coordinates[0], g.coordinates[1]);
-        y += s.pointSize * PXM * 0.6 + size;
+        const [px, py] = pointPos.get(f as Feature) ?? P(g.coordinates[0], g.coordinates[1]);
+        const r = s.pointSize * PXM * 0.6;
+        // dessous, dessus, à droite, à gauche : la première place libre
+        cands = [
+          { x: px, y: py + r + size, anchor: 'middle' },
+          { x: px, y: py - r - size * 0.3, anchor: 'middle' },
+          { x: px + r + size * 0.3, y: py + size * 0.35, anchor: 'start' },
+          { x: px - r - size * 0.3, y: py + size * 0.35, anchor: 'end' },
+        ];
+        x = px;
+        y = py;
       } else if (/LineString/.test(g.type)) {
         const line: Position[] = g.type === "LineString" ? g.coordinates : (g as any).coordinates.reduce((a: Position[], b: Position[]) => (b.length > a.length ? b : a), [] as Position[]);
         if (line.length < 2) continue;
@@ -290,12 +318,30 @@ function renderVectorLayer(l: Layer, fc: FC, P: (lon: number, lat: number) => [n
       }
       const t = String(txt);
       const w = textWidth(t, size, bold);
-      const box = rot ? { x0: x - w / 2, y0: y - w / 2, x1: x + w / 2, y1: y + w / 2 } : { x0: x - w / 2, y0: y - size, x1: x + w / 2, y1: y + size * 0.3 };
-      if (placed.some((p) => !(box.x1 < p.x0 || box.x0 > p.x1 || box.y1 < p.y0 || box.y0 > p.y1))) continue;
+      const hits = (b: LabelBox) => b.x0 < FRAME.x + 0.5 || b.x1 > FRAME.x + FRAME.w - 0.5 || b.y0 < FRAME.y + 0.5 || b.y1 > FRAME.y + FRAME.h - 0.5 || placed.some((p) => !(b.x1 < p.x0 || b.x0 > p.x1 || b.y1 < p.y0 || b.y0 > p.y1));
+      let anchor: 'middle' | 'start' | 'end' = 'middle';
+      let box: LabelBox | null = null;
+      if (cands) {
+        for (const c of cands) {
+          const x0 = c.anchor === 'middle' ? c.x - w / 2 : c.anchor === 'start' ? c.x : c.x - w;
+          const b = { x0, y0: c.y - size, x1: x0 + w, y1: c.y + size * 0.3 };
+          if (!hits(b)) {
+            box = b;
+            x = c.x;
+            y = c.y;
+            anchor = c.anchor;
+            break;
+          }
+        }
+        if (!box) continue;
+      } else {
+        box = rot ? { x0: x - w / 2, y0: y - w / 2, x1: x + w / 2, y1: y + w / 2 } : { x0: x - w / 2, y0: y - size, x1: x + w / 2, y1: y + size * 0.3 };
+        if (hits(box)) continue;
+      }
       placed.push(box);
       const yy = rot ? y + size * 0.35 : y;
       labels.push(
-        haloText(`x="${n2(x)}" y="${n2(yy)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="${bold ? 700 : 400}" fill="${lab.color}" text-anchor="middle"${rot ? ` transform="rotate(${n2(rot)} ${n2(x)} ${n2(y)})"` : ''}`, esc(t), lab.halo, size * 0.22),
+        haloText(`x="${n2(x)}" y="${n2(yy)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="${bold ? 700 : 400}" fill="${lab.color}" text-anchor="${anchor}"${rot ? ` transform="rotate(${n2(rot)} ${n2(x)} ${n2(y)})"` : ''}`, esc(t), lab.halo, size * 0.22),
       );
     }
   }
@@ -456,9 +502,10 @@ function legendAt(el: LayoutElement, groups: LegendGroup[], font: string, defs: 
   }
   const top = y;
   const bottom = el.y + el.h - pad + 0.01;
+  const indent = size * 0.9; // entrées d'un groupe titré en retrait : une couche simple qui suit n'en fait pas partie
   const groupGap = size * 0.6; // sépare visuellement les groupes (une couche simple ne semble pas rattachée au groupe précédent)
   const heightOf = (ln: Line) => {
-    const wrapped = wrapText(ln.text, size, colW - (ln.type === 'item' ? sw + 2 : 0), ln.type === 'group');
+    const wrapped = wrapText(ln.text, size, colW - (ln.type === 'item' ? sw + 2 + (ln.title ? indent : 0) : 0), ln.type === 'group');
     return { wrapped, need: wrapped.length * size * 1.25 + (lh - size * 1.25) };
   };
   let col = 0;
@@ -479,6 +526,12 @@ function legendAt(el: LayoutElement, groups: LegendGroup[], font: string, defs: 
     // un titre de groupe n'est jamais laissé seul en bas de colonne : il part avec sa première entrée
     let needed = need;
     if (ln.type === 'group' && lines[i + 1]?.type === 'item') needed += heightOf(lines[i + 1]).need;
+    // un groupe titré qui tient entier dans une colonne neuve n'est pas coupé : il y part en bloc
+    if (ln.type === 'group' && y > top + 0.01 && col < cols - 1) {
+      let whole = need;
+      for (let j = i + 1; j < lines.length && lines[j].type === 'item' && lines[j].gi === ln.gi; j++) whole += heightOf(lines[j]).need;
+      if (y + whole > bottom && top + whole <= bottom) needed = Infinity;
+    }
     if (y + needed > bottom) {
       if (!nextCol()) break;
       // entrée d'un groupe titré qui passe en haut de colonne : rappeler le titre
@@ -493,8 +546,9 @@ function legendAt(el: LayoutElement, groups: LegendGroup[], font: string, defs: 
     if (ln.type === 'group') {
       wrapped.forEach((t, k) => out.push(`<text x="${n2(x)}" y="${n2(y + k * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="700" fill="#27272a">${esc(t)}</text>`));
     } else {
-      out.push(swatchSvg(ln.swatch!, x, y - swh * 0.85, sw, swh, defs, `lg-${el.id}-${ln.gi}-${ln.ii}`));
-      wrapped.forEach((t, k) => out.push(`<text x="${n2(x + sw + 2)}" y="${n2(y + k * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" fill="#27272a">${esc(t)}</text>`));
+      const xi = x + (ln.title ? indent : 0);
+      out.push(swatchSvg(ln.swatch!, xi, y - swh * 0.85, sw, swh, defs, `lg-${el.id}-${ln.gi}-${ln.ii}`));
+      wrapped.forEach((t, k) => out.push(`<text x="${n2(xi + sw + 2)}" y="${n2(y + k * size * 1.25)}" ${fontAttr(font)} font-size="${n2(size)}" fill="#27272a">${esc(t)}</text>`));
     }
     y += need;
   }
@@ -545,6 +599,13 @@ function renderNorth(el: LayoutElement, layout: Layout, font: string) {
   return `<g id="fleche-nord" transform="rotate(${n2(rot)} ${n2(cx)} ${n2((top + bottom) / 2)})">${tri}<text x="${n2(cx)}" y="${n2(ny)}" ${fontAttr(font)} font-size="${n2(Math.max(2.5, s * 0.26))}" font-weight="700" text-anchor="middle" fill="#18181b">N</text></g>`;
 }
 
+/** Numéro de planche par défaut : « 2 / 3 » d'après l'ordre des mises en page du site (vide s'il n'y en a qu'une). */
+function planchePos(ctx: RenderCtx) {
+  const ls = ctx.site.layouts || [];
+  const i = ls.findIndex((x) => x.id === ctx.layout.id);
+  return i >= 0 && ls.length > 1 ? `${i + 1} / ${ls.length}` : '';
+}
+
 function renderCartouche(el: LayoutElement, ctx: RenderCtx, attributions: string[], font: string) {
   const p = el.props;
   const l = ctx.layout;
@@ -556,7 +617,7 @@ function renderCartouche(el: LayoutElement, ctx: RenderCtx, attributions: string
     ['Maître d’ouvrage', p.moa || ''],
     ['Auteur', p.auteur || ''],
     ['Phase', p.phase || ''],
-    ['Planche', p.planche || ''],
+    ['Planche', p.planche || planchePos(ctx)],
     ['Date', p.date || new Date().toLocaleDateString('fr-FR')],
     ['Échelle', `1/${l.scale.toLocaleString('fr-FR')} — ${l.format === 'custom' ? `${l.width} × ${l.height} mm` : `${l.format} ${l.orientation === 'landscape' ? 'paysage' : 'portrait'}`}`],
     ['Projection', `WGS 84 / Pseudo-Mercator — mesures en UTM ${ctx.site.utm.zone}${ctx.site.utm.south ? 'S' : 'N'}`],
@@ -600,22 +661,70 @@ function renderInset(el: LayoutElement, ctx: RenderCtx, font: string) {
     out.push(`<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h / 2)}" font-size="2.5" text-anchor="middle" fill="#a1a1aa" ${fontAttr(font)}>Encart de situation</text>`);
     return `<g id="encart">${out.join('')}</g>`;
   }
-  const bb = country.features.map((f) => geomBBox(f.geometry)).reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
-  const pad = Math.max(3, Math.min(el.w, el.h) * 0.08);
+  const bb0 = country.features.map((f) => geomBBox(f.geometry)).reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
+  const k = Math.max(1, Math.min(2.6, Math.min(el.w, el.h) / 45));
+  const titleH = 2.2 * k + 1.4 * k;
+  const nb = ctx.inset?.neighbours?.features || [];
+  // étendue : le pays et une marge où se lisent voisins et océan
+  const m = nb.length ? 0.12 : 0;
+  const bb = [bb0[0] - (bb0[2] - bb0[0]) * m, bb0[1] - (bb0[3] - bb0[1]) * m, bb0[2] + (bb0[2] - bb0[0]) * m, bb0[3] + (bb0[3] - bb0[1]) * m];
+  const pad = nb.length ? 0.6 : Math.max(3, Math.min(el.w, el.h) * 0.08);
   const lat0 = (bb[1] + bb[3]) / 2;
   const c = Math.cos((lat0 * Math.PI) / 180);
-  const sx = (el.w - pad * 2) / ((bb[2] - bb[0]) * c);
-  const sy = (el.h - pad * 2 - 3) / (bb[3] - bb[1]);
-  const s = Math.min(sx, sy);
+  const availH = el.h - pad * 2 - titleH;
+  const s = Math.min((el.w - pad * 2) / ((bb[2] - bb[0]) * c), availH / (bb[3] - bb[1]));
   const ox = el.x + (el.w - (bb[2] - bb[0]) * c * s) / 2;
-  const oy = el.y + pad + (el.h - pad * 2 - 3 - (bb[3] - bb[1]) * s) / 2;
+  const oy = el.y + pad + (availH - (bb[3] - bb[1]) * s) / 2;
   const P = (lon: number, lat: number): [number, number] => [ox + (lon - bb[0]) * c * s, oy + (bb[3] - lat) * s];
-  for (const f of ctx.inset?.regions?.features || []) out.push(`<path d="${pathOf(f.geometry, P)}" fill="#f4f4f5" stroke="#d4d4d8" stroke-width="0.12"/>`);
-  for (const f of country.features) out.push(`<path d="${pathOf(f.geometry, P)}" fill="${ctx.inset?.regions ? 'none' : '#f4f4f5'}" stroke="#71717a" stroke-width="0.25"/>`);
+  const U = (x: number, y: number): [number, number] => [bb[0] + (x - ox) / (c * s), bb[3] - (y - oy) / s];
+  const id = `encart-${el.id}`;
+  const mapH = el.h - titleH;
+  if (nb.length) {
+    out.push(`<defs><clipPath id="${id}"><rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(mapH)}"/></clipPath></defs>`);
+    out.push(`<g clip-path="url(#${id})"><rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(mapH)}" fill="#dce9f1"/>`);
+  } else out.push(`<g>`);
+  for (const f of ctx.inset?.regions?.features || []) out.push(`<path d="${pathOf(f.geometry, P)}" fill="#ffffff" stroke="#d4d4d8" stroke-width="0.12"/>`);
+  for (const f of country.features) out.push(`<path d="${pathOf(f.geometry, P)}" fill="${ctx.inset?.regions ? 'none' : '#ffffff'}" stroke="none"/>`);
+  // voisins par-dessus (la Gambie, enclavée, reste grise), puis le contour du pays
+  for (const f of nb) out.push(`<path d="${pathOf(f.geometry, P)}" fill="#ecebe7" stroke="#b8b6b0" stroke-width="0.15"/>`);
+  for (const f of country.features) out.push(`<path d="${pathOf(f.geometry, P)}" fill="none" stroke="#52525b" stroke-width="0.3"/>`);
+  out.push(`</g>`);
+  // noms des voisins, au centre de leur partie visible
+  const view = [...U(el.x, el.y + mapH), ...U(el.x + el.w, el.y)];
+  const vb = [view[0], view[1], view[2], view[3]];
+  const fsN = 1.8 * k;
+  const used: LabelBox[] = [];
   const [sx0, sy0] = P(ctx.site.center[0], ctx.site.center[1]);
-  const k = Math.max(1, Math.min(2.6, Math.min(el.w, el.h) / 45));
-  out.push(`<circle cx="${n2(sx0)}" cy="${n2(sy0)}" r="${n2(1.4 * k)}" fill="#dc2626" stroke="#ffffff" stroke-width="${n2(0.35 * k)}"/>`);
-  out.push(`<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h - 1.4 * k)}" ${fontAttr(font)} font-size="${n2(2.2 * k)}" text-anchor="middle" fill="#52525b">${esc(el.props.title || 'Situation')}</text>`);
+  used.push({ x0: sx0 - 2 * k, y0: sy0 - 2 * k, x1: sx0 + 2 * k, y1: sy0 + 2 * k });
+  const name = (t: string, lon: number, lat: number, size: number, color: string, weight = 400, within?: any) => {
+    const [x, y] = P(lon, lat);
+    const w = textWidth(t, size, weight === 700) * 1.1;
+    const b = { x0: x - w / 2, y0: y - size, x1: x + w / 2, y1: y + size * 0.3 };
+    // le nom d'un pays doit tenir dans ce pays (sinon, comme pour la Gambie, il est omis)
+    if (within && ![[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1]].every(([u, v]) => booleanPointInPolygon(U(u, v), within))) return;
+    if (b.x0 < el.x + 0.5 || b.x1 > el.x + el.w - 0.5 || b.y0 < el.y + 0.5 || b.y1 > el.y + mapH - 0.5) return;
+    if (used.some((p) => !(b.x1 < p.x0 || b.x0 > p.x1 || b.y1 < p.y0 || b.y0 > p.y1))) return;
+    used.push(b);
+    out.push(`<text x="${n2(x)}" y="${n2(y)}" ${fontAttr(font)} font-size="${n2(size)}" font-weight="${weight}" letter-spacing="${n2(size * 0.08)}" text-anchor="middle" fill="${color}">${esc(t.toUpperCase())}</text>`);
+  };
+  const cb = bb0;
+  name(ctx.inset?.name || '', (cb[0] + cb[2]) / 2 + (cb[2] - cb[0]) * 0.12, (cb[1] + cb[3]) / 2, fsN * 1.15, '#3f3f46', 700);
+  for (const f of nb) {
+    try {
+      // point à l'intérieur de la partie visible du pays (le nom ne chevauche pas la frontière)
+      const clip = bboxClip(f as any, vb as any);
+      if (!(clip.geometry as any).coordinates.length) continue;
+      let c = centroid(clip as any).geometry.coordinates;
+      if (!booleanPointInPolygon(c, clip as any)) c = pointOnFeature(clip as any).geometry.coordinates;
+      name(String(f.properties?.nom || ''), c[0], c[1], fsN, '#78716c', 400, clip);
+    } catch {
+      /* géométrie dégénérée : pas de nom */
+    }
+  }
+  out.push(`<circle cx="${n2(sx0)}" cy="${n2(sy0)}" r="${n2(1.1 * k)}" fill="#dc2626" stroke="#ffffff" stroke-width="${n2(0.3 * k)}"/>`);
+  out.push(`<line x1="${n2(el.x)}" y1="${n2(el.y + mapH)}" x2="${n2(el.x + el.w)}" y2="${n2(el.y + mapH)}" stroke="#a1a1aa" stroke-width="0.2"/>`);
+  out.push(`<text x="${n2(el.x + el.w / 2)}" y="${n2(el.y + el.h - 1.2 * k)}" ${fontAttr(font)} font-size="${n2(2.2 * k)}" text-anchor="middle" fill="#52525b">${esc(el.props.title || 'Situation')}</text>`);
+  out.push(`<rect x="${n2(el.x)}" y="${n2(el.y)}" width="${n2(el.w)}" height="${n2(el.h)}" fill="none" stroke="#a1a1aa" stroke-width="0.25"/>`);
   return `<g id="encart">${out.join('')}</g>`;
 }
 
@@ -654,6 +763,7 @@ export function renderLayoutSvg(ctx: RenderCtx): { svg: string; attributions: st
   PXM = PX_MM * (layout.symbolScale ?? defaultSymbolScale(layout));
   const pr = makeProjector(layout);
   const f = pr.frame;
+  FRAME = f;
   const defs: string[] = [];
   const view = pr.bounds(5);
   const visible = site.layers.filter((l) => l.visible);

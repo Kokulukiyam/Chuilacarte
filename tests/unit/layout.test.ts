@@ -115,3 +115,28 @@ describe('légende : groupes et dernier recours', () => {
     for (const c of cls) expect(r.svg).toContain(c.label);
   });
 });
+
+describe('fond : taille des étiquettes selon le format', () => {
+  it('multiplie nombres, paliers et interpolations sur le zoom', async () => {
+    const { scaleTextSize } = await import('@/lib/layout/basemap');
+    expect(scaleTextSize(10, 2)).toBe(20);
+    expect(scaleTextSize(['interpolate', ['linear'], ['zoom'], 10, 8, 16, 14], 2)).toEqual(['interpolate', ['linear'], ['zoom'], 10, 16, 16, 28]);
+    expect(scaleTextSize(['step', ['zoom'], 9, 14, 11], 2)).toEqual(['step', ['zoom'], 18, 14, 22]);
+    expect(scaleTextSize({ stops: [[10, 8], [16, 12]] }, 1.5)).toEqual({ stops: [[10, 12], [16, 18]] });
+    expect(scaleTextSize(['get', 'taille'], 2)).toEqual(['*', ['get', 'taille'], 2]);
+  });
+});
+
+describe('légende : ce qui est dans le cadre', () => {
+  it('compte un grand polygone rempli qui englobe le cadre, et seulement les catégories visibles', async () => {
+    const { buildLegend } = await import('@/lib/layout/legend');
+    const { makeLayer } = await import('@/lib/site');
+    const site = createSiteObject('Test', 'test', emprise, 300);
+    const l = makeLayer({ id: 'occ', name: 'Occupation du sol', role: 'landuse', geom: 'polygon' } as any);
+    l.style = { ...l.style, fillOpacity: 0.7, mode: 'categorized', categorized: { field: 'type', classes: [{ value: 'residential', color: '#f00', label: 'Habitat' }, { value: 'cemetery', color: '#0f0', label: 'Cimetière' }], other: '#eee' } };
+    const big = { type: 'Feature', properties: { type: 'residential' }, geometry: { type: 'Polygon', coordinates: [[[-18, 14], [-17, 14], [-17, 15], [-18, 15], [-18, 14]]] } };
+    const far = { type: 'Feature', properties: { type: 'cemetery' }, geometry: { type: 'Polygon', coordinates: [[[-16, 13], [-15.9, 13], [-15.9, 13.1], [-16, 13]]] } };
+    const g = buildLegend({ ...site, layers: [l] } as any, { occ: { type: 'FeatureCollection', features: [big, far] } as any }, { bbox: [-17.45, 14.67, -17.44, 14.68] });
+    expect(g[0].items.map((i) => i.label)).toEqual(['Habitat']);
+  });
+});

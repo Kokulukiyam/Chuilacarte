@@ -5,7 +5,7 @@ import { buildBaseStyle, sentinelForSite, splitLabels } from '../mapbase';
 import type { FC, Layout, Site } from '../types';
 import { heatmapSpec } from '../maplayers';
 import { makeProjector, PX_MM, verticalStretch, zoomForScale } from './geo';
-import type { BasemapTile } from './svg';
+import { defaultSymbolScale, type BasemapTile } from './svg';
 
 export interface BasemapRender {
   tiles: BasemapTile[];
@@ -72,6 +72,32 @@ function waitIdle(map: maplibregl.Map, timeout = 45000) {
   });
 }
 
+/** Multiplie une taille de texte MapLibre (nombre, fonction à paliers ou expression interpolate/step sur le zoom). */
+export function scaleTextSize(v: any, k: number): any {
+  if (typeof v === 'number') return v * k;
+  if (v && !Array.isArray(v) && typeof v === 'object' && Array.isArray(v.stops)) return { ...v, stops: v.stops.map(([z, x]: [any, any]) => [z, scaleTextSize(x, k)]) };
+  if (Array.isArray(v)) {
+    if (v[0] === 'interpolate' || v[0] === 'interpolate-hcl' || v[0] === 'interpolate-lab') return [...v.slice(0, 3), ...v.slice(3).map((x, i) => (i % 2 ? scaleTextSize(x, k) : x))];
+    if (v[0] === 'step') return [v[0], v[1], scaleTextSize(v[2], k), ...v.slice(3).map((x, i) => (i % 2 ? scaleTextSize(x, k) : x))];
+    if (JSON.stringify(v).includes('"zoom"')) return v; // forme inconnue : laissée telle quelle
+    return ['*', v, k];
+  }
+  return v;
+}
+
+/** Étiquettes du fond agrandies du facteur de symboles de la mise en page (grands formats regardés de plus loin). */
+export function scaleLabelStyle(style: StyleSpecification, k: number): StyleSpecification {
+  if (Math.abs(k - 1) < 0.01) return style;
+  return {
+    ...style,
+    layers: style.layers.map((l: any) =>
+      l.type === 'symbol' && l.layout?.['text-field'] !== undefined
+        ? { ...l, layout: { ...l.layout, ...(l.layout?.['text-size'] !== undefined ? { 'text-size': scaleTextSize(l.layout['text-size'], k) } : { 'text-size': 16 * k }) }, paint: { ...l.paint, ...(typeof l.paint?.['text-halo-width'] === 'number' ? { 'text-halo-width': l.paint['text-halo-width'] * k } : {}) } }
+        : l,
+    ),
+  };
+}
+
 /**
  * Rend le fond de carte (et les rasters du site) pour le cadre de la mise en page, par morceaux,
  * avec un rapport de pixels = dpi/96 pour que les étiquettes du fond gardent leur taille physique.
@@ -81,7 +107,9 @@ export async function renderBasemap(layout: Layout, site: Site, o: { dpi: number
   const def = basemapById(used);
   const full = await siteRasterStyle(await buildBaseStyle({ basemap: used, hillshade: site.overlays?.hillshade, contours: site.overlays?.contours, sentinelUrl: sentinelForSite(site) }), site, o.data);
   // étiquettes du fond rendues à part, pour être posées au-dessus des couches du site
-  const { base: style, labels: labelStyle } = splitLabels(full);
+  const split = splitLabels(full);
+  const style = split.base;
+  const labelStyle = split.labels && scaleLabelStyle(split.labels, layout.symbolScale ?? defaultSymbolScale(layout));
   const pr0 = makeProjector(layout);
   const f = pr0.frame;
   const onlyBackground = style.layers.length === 1 && style.layers[0].type === 'background';

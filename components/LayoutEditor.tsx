@@ -244,7 +244,10 @@ export default function LayoutEditor() {
               className="btn"
               title="Nouvelle mise en page"
               onClick={() => {
-                const l = newLayout(site, { name: `Planche ${site.layouts.length + 1}` });
+                const l = newLayout(site);
+                // « Planche A3 », puis « Planche A3 (2) »… : le nom suit le format (relayout) et reste unique
+                const names = new Set(site.layouts.map((x) => x.name));
+                for (let k = 2; names.has(l.name); k++) l.name = `Planche ${l.format} (${k})`;
                 useStore.getState().commit((d) => void d.site.layouts.push(l));
                 setLayoutId(l.id);
               }}
