@@ -1,6 +1,6 @@
 # Rapport final — Chuilacarte
 
-Rapport final, rédigé le 04/11/2026, mis à jour le 12/11/2026.
+Rapport final, rédigé le 04/11/2026, mis à jour le 14/11/2026.
 
 ## Ce qui est fait
 
@@ -16,6 +16,20 @@ Les dix étapes de la spécification, dans l'ordre :
 8. **Implantation** : plan DXF et image calés (déplacement, rotation, échelle, 2-3 points), calculs CES / COS, 3D, ombres portées.
 9. **Test de bout en bout** par agent (Playwright, `tests/e2e/bout-en-bout.ts`). Après correction des défauts relevés : 39 étapes sur 39 OK, 0 erreur dans la console du navigateur et le terminal du serveur.
 10. **Documentation** : `README.md`, `SOURCES.md`, `DECISIONS.md`, ce rapport, `exemples/`.
+
+### Refonte de l'interface (14/11/2026)
+
+Après les dix étapes, l'interface a été revue en entier, sans toucher au moteur cartographique ni aux exports :
+
+- **Aspect** : neutres chauds, un seul accent (terre cuite) pour l'état actif, logo, mode sombre revu, contrôles de formulaire dessinés (listes, curseurs, cases, couleurs).
+- **Accueil** : recherche et tri des sites, cartes refaites, état vide guidé.
+- **Espace de travail** : barre d'outils regroupée avec infobulles et raccourcis, palette de commandes (Ctrl/⌘ K), aide de l'outil actif sur la carte, barre d'état (coordonnées WGS84 et UTM, échelle approchée), clic droit (copier les coordonnées, recadrer), glisser-déposer de fichiers, panneaux repliables.
+- **Couches** : recherche, filtre des couches affichées, largeur réglable, Alt + clic pour isoler ; table attributaire à hauteur réglable avec export CSV.
+- **Dialogues** de l'application à la place de ceux du navigateur ; suppressions annulables depuis le message.
+- **Mise en page** : exports toujours visibles, déplacement aux flèches, Suppr, zoom à la molette.
+- **Défaut corrigé au passage** : les classes `.input` / `.btn` l'emportaient sur les utilitaires Tailwind, d'où des champs en pleine largeur par erreur.
+
+Vérification : `tsc` vide, 35 tests unitaires, test de bout en bout 39/39 sans erreur (script adapté aux nouveaux dialogues et au menu d'export), captures d'écran clair / sombre relues (`npx tsx scripts/captures.ts`). Cette refonte n'a pas été relue par un agent distinct, contrairement aux contrôles ci-dessous.
 
 ## Contrôles
 
