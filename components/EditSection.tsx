@@ -22,7 +22,7 @@ export default function EditSection({ layer }: { layer: Layer }) {
     <div className="space-y-2" data-testid="edit-section">
       <div className="section-title">Édition des géométries</div>
       {layer.role !== 'annotations' && (
-        <button className={`btn ${drawTarget === layer.id && tool.startsWith('draw-') ? 'ring-2 ring-blue-500' : ''}`} onClick={startAdd} data-testid="edit-add">
+        <button className={`btn ${drawTarget === layer.id && tool.startsWith('draw-') ? 'on' : ''}`} onClick={startAdd} data-testid="edit-add">
           <Plus size={13} /> Ajouter un objet à cette couche
         </button>
       )}

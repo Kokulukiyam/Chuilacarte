@@ -1,6 +1,9 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { Download, FileStack, Loader2, Printer } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronDown, Download, FileBox, FileJson, FolderOpen, Loader2, PencilRuler, Printer } from 'lucide-react';
+import { exportQgis } from './QgisButton';
+import { useClickOutside, useEscape } from './ui/hooks';
+import { onUi } from '@/lib/uiEvents';
 import { useStore } from '@/lib/store';
 import { flushNow } from '@/lib/autosave';
 import { download, keepCopy } from '@/lib/layout/export';
@@ -22,57 +25,67 @@ export function LayoutButton() {
   const layoutMode = useStore((s) => s.layoutMode);
   if (layoutMode) return null;
   return (
-    <button className="btn" onClick={() => useStore.getState().setUi({ layoutMode: true })} data-testid="layout-open" title="Mise en page et exports de qualité">
-      <Printer size={14} /> Mise en page
+    <button className="btn-primary" onClick={() => useStore.getState().setUi({ layoutMode: true })} data-testid="layout-open" data-tip="Composer une planche à l’échelle et l’exporter en PNG, PDF ou SVG">
+      <Printer size={14} /> <span className="hidden lg:inline">Mise en page</span>
     </button>
   );
 }
 
+type Fmt = 'geojson' | 'gpkg' | 'dxf' | 'qgis';
+
 export default function ExportMenu() {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<Fmt | null>(null);
   const layoutMode = useStore((s) => s.layoutMode);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const h = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
+  const ref = useClickOutside<HTMLDivElement>(() => setOpen(false), open);
+  useEscape(() => setOpen(false), open);
+  useEffect(() => onUi('export', () => setOpen(true)), []);
   if (layoutMode) return null;
-  const run = async (f: 'geojson' | 'gpkg' | 'dxf') => {
+  const run = async (f: Fmt) => {
     setBusy(f);
+    setOpen(false);
+    const st = useStore.getState();
     try {
-      const n = await exportData(f);
-      useStore.getState().toast(`Export : ${n}`, 'ok');
+      if (f === 'qgis') st.toast(`Dossier QGIS exporté : ${await exportQgis()} (décompressez puis ouvrez le fichier .qgs)`, 'ok');
+      else st.toast(`Export : ${await exportData(f)}`, 'ok');
     } catch (e: any) {
-      useStore.getState().toast(`Échec de l’export : ${e.message}`, 'error');
+      st.toast(`Échec de l’export${f === 'qgis' ? ' QGIS' : ''} : ${e.message}`, 'error');
     } finally {
       setBusy(null);
-      setOpen(false);
     }
   };
+  const Item = ({ f, icon: I, title, sub }: { f: Fmt; icon: any; title: string; sub: string }) => (
+    <button className="menu-item items-start" role="menuitem" onClick={() => run(f)} disabled={!!busy} data-testid={`export-${f}`}>
+      <I size={15} className="mt-0.5 shrink-0 text-zinc-500" />
+      <span>
+        <span className="block font-medium">{title}</span>
+        <span className="hint block">{sub}</span>
+      </span>
+    </button>
+  );
   return (
     <div className="relative" ref={ref}>
-      <button className="btn" onClick={() => setOpen(!open)} data-testid="export-menu">
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Exporter
+      <button className="btn" onClick={() => setOpen(!open)} data-testid="export-menu" data-tip="Exporter les données ou la carte" aria-haspopup="menu" aria-expanded={open}>
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} <span className="hidden min-[1400px]:inline">{busy ? 'Export…' : 'Exporter'}</span>
+        <ChevronDown size={12} className="text-zinc-400" />
       </button>
       {open && (
-        <div className="absolute right-0 top-9 z-40 w-72 rounded-md border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-          <div className="section-title px-1 pb-1">Couches visibles</div>
-          <button className="w-full rounded px-2 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={() => run('gpkg')} data-testid="export-gpkg">
-            <FileStack size={13} className="mr-1 inline" /> GeoPackage <span className="text-[11px] text-zinc-500">(UTM du site, styles QGIS inclus)</span>
+        <div className="popover absolute right-0 top-10 z-40 w-80" role="menu">
+          <div className="section-title px-2 pb-1 pt-1">Données · couches visibles</div>
+          <Item f="gpkg" icon={FileBox} title="GeoPackage" sub="UTM du site, styles QGIS inclus" />
+          <Item f="geojson" icon={FileJson} title="GeoJSON" sub="WGS84, une couche par fichier (zip)" />
+          <Item f="dxf" icon={PencilRuler} title="DXF pour AutoCAD" sub="En mètres, UTM du site" />
+          <div className="section-title mt-1.5 border-t border-zinc-200 px-2 pb-1 pt-2.5 dark:border-zinc-700">Projet complet</div>
+          <Item f="qgis" icon={FolderOpen} title="Dossier QGIS" sub="Toutes les couches + projet .qgs stylé + fond XYZ" />
+          <div className="section-title mt-1.5 border-t border-zinc-200 px-2 pb-1 pt-2.5 dark:border-zinc-700">Carte</div>
+          <button className="menu-item items-start" role="menuitem" onClick={() => (setOpen(false), useStore.getState().setUi({ layoutMode: true }))}>
+            <Printer size={15} className="mt-0.5 shrink-0 text-zinc-500" />
+            <span>
+              <span className="block font-medium">Planche à l’échelle</span>
+              <span className="hint block">PNG 300 dpi, PDF vectoriel, SVG — via la mise en page</span>
+            </span>
           </button>
-          <button className="w-full rounded px-2 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={() => run('geojson')} data-testid="export-geojson">
-            <FileStack size={13} className="mr-1 inline" /> GeoJSON <span className="text-[11px] text-zinc-500">(WGS84, une couche par fichier, zip)</span>
-          </button>
-          <button className="w-full rounded px-2 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={() => run('dxf')} data-testid="export-dxf">
-            <FileStack size={13} className="mr-1 inline" /> DXF AutoCAD <span className="text-[11px] text-zinc-500">(mètres, UTM du site)</span>
-          </button>
-          <div className="section-title mt-2 border-t border-zinc-200 px-1 pb-1 pt-2 dark:border-zinc-700">Carte</div>
-          <button className="w-full rounded px-2 py-1.5 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={() => useStore.getState().setUi({ layoutMode: true })}>
-            <Printer size={13} className="mr-1 inline" /> PNG 300 dpi, PDF, SVG → mise en page
-          </button>
-          <p className="px-2 pt-1 text-[11px] text-zinc-500">Le filtre attributaire de chaque couche est appliqué.</p>
+          <p className="hint px-2 pb-1 pt-1.5">Le filtre attributaire de chaque couche est appliqué.</p>
         </div>
       )}
     </div>

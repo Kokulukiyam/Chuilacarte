@@ -3,6 +3,7 @@ import * as turf from '@turf/turf';
 import type { Feature, LineString, Polygon } from 'geojson';
 import { nanoid } from 'nanoid';
 import { create } from 'zustand';
+import { askText } from './dialogs';
 import { useStore, type Tool } from './store';
 import { registerTool } from './tools';
 import { makeLayer, userSource } from './site';
@@ -114,18 +115,18 @@ registerTool('draw-circle', {
 });
 
 registerTool('draw-text', {
-  finish(f) {
-    const t = window.prompt('Texte à placer sur la carte', 'Texte');
+  async finish(f) {
+    const t = await askText('Texte à placer sur la carte', { initial: 'Texte', okLabel: 'Placer' });
     if (!t) return;
     addAnnotation('text', f.geometry, { _text: t, texte: t });
   },
 });
 
 registerTool('draw-marker', {
-  finish(f) {
+  async finish(f) {
     const layer = activeAnnotationLayer();
     const n = nextMarkerNumber(layer ? useStore.getState().data[layer.id] : undefined);
-    const legend = window.prompt(`Légende du repère n° ${n}`, '') ?? '';
+    const legend = (await askText(`Repère n° ${n}`, { label: 'Légende du repère (facultative)', placeholder: 'Ex. Entrée principale', allowEmpty: true, okLabel: 'Placer', cancelLabel: 'Sans légende' })) ?? '';
     addAnnotation('marker', f.geometry, { _num: n, _legend: legend, numero: n, legende: legend });
   },
 });

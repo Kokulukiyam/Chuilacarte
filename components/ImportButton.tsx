@@ -1,5 +1,6 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { onUi } from '@/lib/uiEvents';
 import { Loader2, Upload } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { makeLayer, userSource } from '@/lib/site';
@@ -40,10 +41,11 @@ export async function importFileToSite(file: File) {
 export default function ImportButton() {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  useEffect(() => onUi('import', () => ref.current?.click()), []);
   return (
     <>
-      <button className="btn" onClick={() => ref.current?.click()} disabled={busy} title="Importer un fichier comme couche" data-testid="import-layer">
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Importer
+      <button className="btn" onClick={() => ref.current?.click()} disabled={busy} data-tip="Importer un fichier comme couche : GeoJSON, KML, GeoPackage, Shapefile zippé, DXF, CSV — ou glissez-le sur la carte" data-testid="import-layer">
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} <span className="hidden min-[1400px]:inline">Importer</span>
       </button>
       <input
         ref={ref}

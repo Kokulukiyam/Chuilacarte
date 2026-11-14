@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { FileDown, Image as ImageIcon, Loader2, Plus, Save, Trash2, X, Crosshair, Copy } from 'lucide-react';
+import { askText } from '@/lib/dialogs';
 import { useStore } from '@/lib/store';
 import { BASEMAPS } from '@/lib/basemaps';
 import { useConfig } from '@/lib/config';
@@ -223,15 +224,15 @@ export default function LayoutEditor() {
   const legendGroups = buildLegend(site, data);
 
   return (
-    <div className="absolute inset-0 z-20 flex bg-zinc-100 dark:bg-zinc-950" data-testid="layout-editor">
-      <aside className="flex w-[320px] shrink-0 flex-col overflow-y-auto border-r border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-3 flex items-center justify-between">
+    <div className="absolute inset-0 z-20 flex bg-zinc-200 dark:bg-zinc-950" data-testid="layout-editor">
+      <aside className="flex w-[320px] shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex h-9 shrink-0 items-center justify-between border-b border-zinc-200 pl-3 pr-1.5 dark:border-zinc-800">
           <span className="section-title">Mise en page</span>
-          <button className="btn-ghost" onClick={() => useStore.getState().setUi({ layoutMode: false })} title="Revenir à la carte" data-testid="layout-close">
+          <button className="btn-ghost py-0.5 text-[12px]" onClick={() => useStore.getState().setUi({ layoutMode: false })} data-tip="Revenir à la carte" data-testid="layout-close">
             <X size={14} /> Fermer
           </button>
         </div>
-        <div className="space-y-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
           <div className="flex gap-1">
             <select className="input" value={layout.id} onChange={(e) => setLayoutId(e.target.value)} data-testid="layout-select">
               {site.layouts.map((l) => (
@@ -270,9 +271,10 @@ export default function LayoutEditor() {
               title="Supprimer cette mise en page"
               disabled={site.layouts.length < 2}
               onClick={() => {
-                if (!confirm(`Supprimer « ${layout.name} » ?`)) return;
-                useStore.getState().commit((d) => void (d.site.layouts = d.site.layouts.filter((x) => x.id !== layout.id)));
+                const st = useStore.getState();
+                st.commit((d) => void (d.site.layouts = d.site.layouts.filter((x) => x.id !== layout.id)));
                 setLayoutId(site.layouts.find((x) => x.id !== layout.id)?.id || null);
+                st.toast(`Mise en page « ${layout.name} » supprimée`, 'info', { label: 'Annuler', run: () => useStore.getState().undo() });
               }}
             >
               <Trash2 size={13} />
@@ -280,7 +282,7 @@ export default function LayoutEditor() {
           </div>
           <input key={layout.id} className="input" defaultValue={layout.name} onBlur={(e) => e.target.value.trim() && e.target.value !== layout.name && set((l) => (l.name = e.target.value.trim()))} aria-label="Nom de la mise en page" />
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[12px]">
+            <label className="field">
               Format
               <select
                 className="input"
@@ -298,7 +300,7 @@ export default function LayoutEditor() {
                 ))}
               </select>
             </label>
-            <label className="text-[12px]">
+            <label className="field">
               Orientation
               <select className="input" value={layout.orientation} onChange={(e) => set((l) => Object.assign(l, relayout(site, l, l.format, e.target.value as any, l.format === 'custom' ? [l.height, l.width] : undefined)))} data-testid="layout-orientation">
                 <option value="landscape">Paysage</option>
@@ -308,18 +310,18 @@ export default function LayoutEditor() {
           </div>
           {layout.format === 'custom' && (
             <div className="grid grid-cols-2 gap-2">
-              <label className="text-[12px]">
+              <label className="field">
                 Largeur (mm)
                 <input type="number" className="input" defaultValue={layout.width} min={50} max={3000} onBlur={(e) => set((l) => Object.assign(l, relayout(site, l, 'custom', Number(e.target.value) >= l.height ? 'landscape' : 'portrait', [Number(e.target.value), l.height])))} />
               </label>
-              <label className="text-[12px]">
+              <label className="field">
                 Hauteur (mm)
                 <input type="number" className="input" defaultValue={layout.height} min={50} max={3000} onBlur={(e) => set((l) => Object.assign(l, relayout(site, l, 'custom', l.width >= Number(e.target.value) ? 'landscape' : 'portrait', [l.width, Number(e.target.value)])))} />
               </label>
             </div>
           )}
           <div>
-            <label className="text-[12px]">Échelle</label>
+            <label className="field">Échelle</label>
             <div className="flex gap-1">
               <select className="input" value={SCALES.includes(layout.scale) ? layout.scale : 'libre'} onChange={(e) => e.target.value !== 'libre' && set((l) => applyScale(l, Number(e.target.value)))} data-testid="layout-scale">
                 {SCALES.map((s) => (
@@ -341,12 +343,12 @@ export default function LayoutEditor() {
               <input type="number" className="input w-16" value={layout.bearing || 0} step={1} onChange={(e) => set((l) => (l.bearing = Number(e.target.value) || 0))} />°
             </label>
           </div>
-          <label className="block text-[12px]">
+          <label className="field">
             Épaisseurs et symboles : ×{fmtNum(layout.symbolScale ?? defaultSymbolScale(layout), 2)}
             <input type="range" min={0.5} max={3} step={0.05} value={layout.symbolScale ?? defaultSymbolScale(layout)} onChange={(e) => set((l) => (l.symbolScale = Number(e.target.value)))} className="w-full" data-testid="layout-symbolscale" />
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[12px]">
+            <label className="field">
               Fond de carte
               <select className="input" value={layout.basemap} onChange={(e) => set((l) => (l.basemap = e.target.value))} data-testid="layout-basemap">
                 {BASEMAPS.filter((b) => !(b.requires === 'arcgis' && !cfg.arcgis) && !(b.requires === 'noncommercial' && !cfg.noncommercial)).map((b) => (
@@ -357,7 +359,7 @@ export default function LayoutEditor() {
                 ))}
               </select>
             </label>
-            <label className="text-[12px]">
+            <label className="field">
               Police
               <select className="input" value={layout.font} onChange={(e) => set((l) => (l.font = e.target.value))} data-testid="layout-font">
                 {Object.keys(FONT_STACKS).map((f) => (
@@ -380,13 +382,13 @@ export default function LayoutEditor() {
             </div>
             <ul className="mt-2 text-[12px]">
               <li>
-                <button className={`w-full rounded px-1 py-0.5 text-left ${sel === '__map' ? 'bg-blue-100 dark:bg-blue-950' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setSel('__map')}>
+                <button className={`w-full rounded px-1.5 py-1 text-left ${sel === '__map' ? 'bg-accent-100 font-medium text-accent-900 dark:bg-accent-900/40 dark:text-accent-50' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setSel('__map')}>
                   Cadre de carte
                 </button>
               </li>
               {layout.elements.map((e) => (
                 <li key={e.id}>
-                  <button className={`w-full truncate rounded px-1 py-0.5 text-left ${sel === e.id ? 'bg-blue-100 dark:bg-blue-950' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setSel(e.id)}>
+                  <button className={`w-full truncate rounded px-1.5 py-1 text-left ${sel === e.id ? 'bg-accent-100 font-medium text-accent-900 dark:bg-accent-900/40 dark:text-accent-50' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} onClick={() => setSel(e.id)}>
                     {ELEMENT_LABELS[e.type]}
                     {e.props.text ? ` — ${String(e.props.text).slice(0, 30)}` : ''}
                   </button>
@@ -398,23 +400,11 @@ export default function LayoutEditor() {
           {sel === '__map' && <p className="text-[11px] text-zinc-500">Glissez dans le cadre pour déplacer la carte ; poignée en bas à droite pour redimensionner le cadre.</p>}
 
           <div className="space-y-1 border-t border-zinc-200 pt-3 dark:border-zinc-800">
-            <div className="section-title">Exporter la planche</div>
-            <div className="grid grid-cols-3 gap-1">
-              {(['png', 'pdf', 'svg'] as const).map((k) => (
-                <button key={k} className="btn justify-center" disabled={!!busy} onClick={() => runExport(k)} data-testid={`export-${k}`}>
-                  {busy?.startsWith(k) ? <Loader2 size={13} className="animate-spin" /> : <FileDown size={13} />} {k.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <p className="text-[11px] text-zinc-500">{busy ? busy.split(':').slice(1).join(':') || 'Export en cours…' : 'PNG 300 dpi au format choisi · PDF vectoriel · SVG pour Illustrator. Une copie est gardée dans le dossier exports/ du site.'}</p>
-          </div>
-
-          <div className="space-y-1 border-t border-zinc-200 pt-3 dark:border-zinc-800">
             <div className="section-title">Modèles</div>
             <button
               className="btn"
               onClick={async () => {
-                const name = prompt('Nom du modèle', `${layout.format} ${layout.orientation === 'landscape' ? 'paysage' : 'portrait'} — ${layout.font}`);
+                const name = await askText('Enregistrer comme modèle', { label: 'Nom du modèle', okLabel: 'Enregistrer', initial: `${layout.format} ${layout.orientation === 'landscape' ? 'paysage' : 'portrait'} — ${layout.font}` });
                 if (!name) return;
                 const r = await fetch('/api/templates', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, layout }) });
                 const t = await r.json();
@@ -458,10 +448,21 @@ export default function LayoutEditor() {
             )}
           </div>
         </div>
+        <div className="shrink-0 space-y-1.5 border-t border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <div className="section-title">Exporter la planche</div>
+            <div className="grid grid-cols-3 gap-1">
+              {(['png', 'pdf', 'svg'] as const).map((k) => (
+                <button key={k} className="btn-accent" disabled={!!busy} onClick={() => runExport(k)} data-testid={`export-${k}`}>
+                  {busy?.startsWith(k) ? <Loader2 size={13} className="animate-spin" /> : <FileDown size={13} />} {k.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <p className="hint">{busy ? busy.split(':').slice(1).join(':') || 'Export en cours…' : 'PNG 300 dpi au format choisi · PDF vectoriel · SVG pour Illustrator. Une copie est gardée dans le dossier exports/ du site.'}</p>
+        </div>
       </aside>
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-3 py-1 text-[12px] dark:border-zinc-800 dark:bg-zinc-900">
-          <span>
+        <div className="flex h-9 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-3 text-[12px] dark:border-zinc-800 dark:bg-zinc-900">
+          <span className="font-medium">
             {layout.format === 'custom' ? `${layout.width} × ${layout.height} mm` : `${layout.format} ${layout.orientation === 'landscape' ? 'paysage' : 'portrait'}`} · 1/{layout.scale.toLocaleString('fr-FR')}
           </span>
           {bmBusy && (
@@ -470,17 +471,17 @@ export default function LayoutEditor() {
             </span>
           )}
           {bm?.note && <span className="text-amber-700 dark:text-amber-400">{bm.note}</span>}
-          {preview?.legendOverflow && <span className="text-red-600">Légende incomplète : agrandissez son cadre</span>}
+          {preview?.legendOverflow && <span className="rounded bg-red-50 px-1.5 py-0.5 font-medium text-red-700 dark:bg-red-950 dark:text-red-300">Légende incomplète : agrandissez son cadre</span>}
           <span className="ml-auto flex items-center gap-1">
             Zoom
-            <button className="btn-ghost" onClick={() => setZoom(Math.max(0.25, zoom / 1.25))}>
+            <button className="icon-btn h-6 w-6" onClick={() => setZoom(Math.max(0.25, zoom / 1.25))} aria-label="Dézoomer" data-tip="Dézoomer">
               −
             </button>
-            {Math.round(zoom * 100)} %
-            <button className="btn-ghost" onClick={() => setZoom(Math.min(6, zoom * 1.25))}>
+            <span className="w-11 text-center tabular-nums">{Math.round(zoom * 100)} %</span>
+            <button className="icon-btn h-6 w-6" onClick={() => setZoom(Math.min(6, zoom * 1.25))} aria-label="Zoomer" data-tip="Zoomer">
               +
             </button>
-            <button className="btn-ghost" onClick={() => setZoom(1)}>
+            <button className="btn-ghost py-0.5 text-[12px]" onClick={() => setZoom(1)} data-tip="Afficher toute la planche">
               Ajuster
             </button>
           </span>
@@ -488,7 +489,7 @@ export default function LayoutEditor() {
         <div ref={wrap} className="relative min-h-0 flex-1 overflow-auto">
           <div className="flex min-h-full min-w-full items-center justify-center p-6">
             <div
-              className="shadow-xl ring-1 ring-zinc-300 dark:ring-zinc-700"
+              className="bg-white shadow-modal ring-1 ring-zinc-300 dark:ring-zinc-700"
               style={{ width: layout.width * pxPerMm, height: layout.height * pxPerMm, touchAction: 'none' }}
               onPointerDown={onDown}
               onPointerMove={onMove}
@@ -511,7 +512,7 @@ function ElementProps({ layout, el, onDelete, legendGroups }: { layout: Layout; 
   });
   const p = el.props;
   const txt = (k: string, label: string, rows = 1) => (
-    <label className="block text-[12px]">
+    <label className="field">
       {label}
       {rows > 1 ? (
         <textarea key={el.id + k} className="input" rows={rows} defaultValue={p[k] || ''} onBlur={(e) => e.target.value !== (p[k] || '') && set((pp) => (pp[k] = e.target.value))} />
@@ -521,7 +522,7 @@ function ElementProps({ layout, el, onDelete, legendGroups }: { layout: Layout; 
     </label>
   );
   const num = (k: string, label: string, min: number, max: number, step = 0.5, def?: number) => (
-    <label className="block text-[12px]">
+    <label className="field">
       {label}
       <input type="number" className="input" min={min} max={max} step={step} value={p[k] ?? def ?? ''} onChange={(e) => set((pp) => (pp[k] = Number(e.target.value)))} />
     </label>
@@ -539,7 +540,7 @@ function ElementProps({ layout, el, onDelete, legendGroups }: { layout: Layout; 
           {txt('text', 'Texte', el.type === 'text' ? 3 : 1)}
           <div className="grid grid-cols-2 gap-2">
             {num('size', 'Taille (pt)', 4, 200, 0.5)}
-            <label className="text-[12px]">
+            <label className="field">
               Graisse
               <select className="input" value={p.weight || (el.type === 'title' ? 'bold' : 'regular')} onChange={(e) => set((pp) => (pp.weight = e.target.value))}>
                 <option value="light">Fine</option>
@@ -547,7 +548,7 @@ function ElementProps({ layout, el, onDelete, legendGroups }: { layout: Layout; 
                 <option value="bold">Grasse</option>
               </select>
             </label>
-            <label className="text-[12px]">
+            <label className="field">
               Alignement
               <select className="input" value={p.align || 'left'} onChange={(e) => set((pp) => (pp.align = e.target.value))}>
                 <option value="left">Gauche</option>
@@ -628,7 +629,7 @@ function ElementProps({ layout, el, onDelete, legendGroups }: { layout: Layout; 
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (!f) return;
-              if (f.size > 3e6) return alert('Image trop lourde (3 Mo max)');
+              if (f.size > 3e6) return useStore.getState().toast('Image trop lourde (3 Mo au maximum)', 'error');
               const r = new FileReader();
               r.onload = () => set((pp) => (pp.href = r.result));
               r.readAsDataURL(f);

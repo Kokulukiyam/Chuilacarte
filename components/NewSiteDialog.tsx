@@ -1,4 +1,5 @@
 'use client';
+import { useEscape } from './ui/hooks';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as turf from '@turf/turf';
@@ -22,6 +23,7 @@ interface GeoResult {
 const BUFFERS = [0, 100, 250, 500, 1000, 2000];
 
 export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
+  useEscape(onClose);
   const router = useRouter();
   const [tab, setTab] = useState<'search' | 'draw' | 'import'>('search');
   const [name, setName] = useState('');
@@ -172,16 +174,19 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" role="dialog" aria-label="Nouveau site">
-      <div className="flex h-[min(760px,92vh)] w-[min(1200px,96vw)] overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-zinc-900">
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Nouveau site" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
+      <div className="modal flex h-[min(760px,92vh)] w-[min(1200px,96vw)]">
         <div className="flex w-[380px] flex-col border-r border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
-            <h2 className="font-semibold">Nouveau site d’étude</h2>
-            <button className="btn-ghost" onClick={onClose} aria-label="Fermer">
+            <div>
+              <h2 className="font-display text-[17px] font-bold leading-tight">Nouveau site d’étude</h2>
+              <p className="hint">Délimitez l’emprise, nommez le site, c’est parti.</p>
+            </div>
+            <button className="icon-btn" onClick={onClose} aria-label="Fermer">
               <X size={16} />
             </button>
           </div>
-          <div className="flex gap-1 border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
+          <div className="flex gap-1 border-b border-zinc-200 px-3 dark:border-zinc-800">
             {(
               [
                 ['search', 'Recherche', Search],
@@ -189,7 +194,7 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
                 ['import', 'Import', Upload],
               ] as const
             ).map(([k, l, I]) => (
-              <button key={k} className={`tool-btn gap-1 px-3 ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)} data-testid={`tab-${k}`}>
+              <button key={k} className={`tab ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)} data-testid={`tab-${k}`}>
                 <I size={14} /> {l}
               </button>
             ))}
@@ -275,16 +280,17 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
               <label className="label">Zone tampon autour de l’emprise</label>
               <div className="flex flex-wrap gap-1">
                 {BUFFERS.map((b) => (
-                  <button key={b} className={`tool-btn border border-zinc-200 px-2 text-[12px] dark:border-zinc-700 ${buffer === b ? 'active' : ''}`} onClick={() => setBuffer(b)}>
+                  <button key={b} className={`chip ${buffer === b ? 'active' : ''}`} onClick={() => setBuffer(b)}>
                     {b === 0 ? 'Aucune' : b >= 1000 ? `${b / 1000} km` : `${b} m`}
                   </button>
                 ))}
-                <input type="number" className="input w-20" value={buffer} min={0} max={20000} step={50} onChange={(e) => setBuffer(Math.max(0, Number(e.target.value) || 0))} aria-label="Distance du tampon (m)" />
+                <input type="number" className="input h-7 w-20" value={buffer} min={0} max={20000} step={50} onChange={(e) => setBuffer(Math.max(0, Number(e.target.value) || 0))} aria-label="Distance du tampon (m)" />
               </div>
             </div>
-            {area !== null && <p className="text-[12px] text-zinc-600 dark:text-zinc-400">Surface de l’emprise : {fmtArea(area)}</p>}
+            {area !== null && <p className="well text-[12px] text-zinc-700 dark:text-zinc-300">Surface de l’emprise : <b>{fmtArea(area)}</b></p>}
             {err && <p className="text-[12px] text-amber-700 dark:text-amber-400">{err}</p>}
-            <button className="btn-primary w-full justify-center" disabled={!emprise || !name.trim() || busy} onClick={create} data-testid="create-site">
+            {!emprise && !err && <p className="hint">Il manque l’emprise : cherchez un lieu, dessinez-la ou importez un fichier.</p>}
+            <button className="btn-accent w-full py-2" disabled={!emprise || !name.trim() || busy} onClick={create} data-testid="create-site">
               {busy ? <Loader2 size={14} className="animate-spin" /> : null} Créer le site
             </button>
           </div>

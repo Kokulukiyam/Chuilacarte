@@ -56,7 +56,7 @@ export function SynthesisSection() {
   const rows = res?.map(synthesisRows);
   return (
     <Section title="Synthèse d’une zone" icon={Calculator} testid="synthesis">
-      <label className="block text-[12px]">
+      <label className="field">
         Zone
         <select className="input" value={za} onChange={(e) => setZa(e.target.value)} data-testid="zone-a">
           {zones.map((z) => (
@@ -66,7 +66,7 @@ export function SynthesisSection() {
           ))}
         </select>
       </label>
-      <label className="block text-[12px]">
+      <label className="field">
         Comparer avec (facultatif)
         <select className="input" value={zb} onChange={(e) => setZb(e.target.value)} data-testid="zone-b">
           <option value="">—</option>
@@ -79,7 +79,7 @@ export function SynthesisSection() {
             ))}
         </select>
       </label>
-      <label className="block text-[12px]">
+      <label className="field">
         Couche de bâti
         <select className="input" value={bl} onChange={(e) => setBl(e.target.value)}>
           <option value="">Automatique (la plus complète)</option>
@@ -195,7 +195,7 @@ export function IsochroneSection() {
         </select>
         <input className="input" value={a.isoMinutes} onChange={(e) => a.set({ isoMinutes: e.target.value })} title="Durées en minutes, séparées par des virgules" data-testid="iso-minutes" />
       </div>
-      <button className={`btn ${tool === 'isochrone' ? 'ring-2 ring-violet-500' : ''}`} onClick={() => useStore.getState().setTool('isochrone')} disabled={a.isoBusy} data-testid="iso-run">
+      <button className={`btn ${tool === 'isochrone' ? 'on' : ''}`} onClick={() => useStore.getState().setTool('isochrone')} disabled={a.isoBusy} data-testid="iso-run">
         {a.isoBusy ? <Loader2 size={13} className="animate-spin" /> : <Footprints size={13} />} {tool === 'isochrone' ? 'Cliquez le point de départ sur la carte' : 'Choisir le point de départ'}
       </button>
       <p className="text-[11px] text-zinc-500">{cfg.ors ? 'Calcul : OpenRouteService (clé fournie).' : 'Calcul : Valhalla (serveur public FOSSGIS, sans clé). Ajoutez ORS_API_KEY pour OpenRouteService.'}</p>
@@ -209,7 +209,7 @@ export function ProfileSection() {
   const tool = useStore((s) => s.tool);
   return (
     <Section title="Profil topographique" icon={LineChart} testid="profile-section">
-      <button className={`btn ${tool === 'profile' ? 'ring-2 ring-teal-500' : ''}`} onClick={() => useStore.getState().setTool('profile')} disabled={a.profileBusy} data-testid="profile-run">
+      <button className={`btn ${tool === 'profile' ? 'on' : ''}`} onClick={() => useStore.getState().setTool('profile')} disabled={a.profileBusy} data-testid="profile-run">
         {a.profileBusy ? <Loader2 size={13} className="animate-spin" /> : <LineChart size={13} />} {tool === 'profile' ? 'Tracez la ligne (double-clic pour finir)' : 'Tracer une ligne de profil'}
       </button>
       {p && <ProfileChart p={p} />}

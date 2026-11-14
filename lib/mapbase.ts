@@ -184,7 +184,7 @@ export function createMap(container: HTMLElement, opts: Partial<maplibregl.MapOp
     style: plainStyle('#f4f4f5'),
     center: [-17.45, 14.69],
     zoom: 11,
-    attributionControl: { compact: false },
+    attributionControl: { compact: true },
     canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true },
     maxPitch: 75,
     // Maj + clic sert à la sélection multiple (fusion) : pas de zoom par boîte

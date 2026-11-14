@@ -11,7 +11,7 @@ export default function MeasurePanel() {
   return (
     <div className="space-y-2" data-testid="measure-panel">
       <div className="section-title">Mesures</div>
-      <p className="text-[11px] text-zinc-500">Calculées dans la projection métrique du site (UTM {utm.zone}{utm.south ? 'S' : 'N'}, EPSG:{utm.epsg}).</p>
+      <p className="hint">Calculées dans la projection métrique du site (UTM {utm.zone}{utm.south ? 'S' : 'N'}, EPSG:{utm.epsg}).</p>
       <div className="flex gap-1">
         <button className="btn" onClick={() => useStore.getState().setTool('measure-distance')} data-testid="measure-distance">
           <Ruler size={13} /> Distance
@@ -21,10 +21,10 @@ export default function MeasurePanel() {
         </button>
       </div>
       {m && (
-        <div className="rounded-md bg-zinc-50 p-2 dark:bg-zinc-800/60" data-testid="measure-result">
+        <div className="well" data-testid="measure-result">
           {m.kind === 'distance' ? (
             <>
-              <div className="text-lg font-semibold">{fmtLength(m.value)}</div>
+              <div className="text-xl font-semibold tabular-nums tracking-tight">{fmtLength(m.value)}</div>
               {m.segments && m.segments.length > 1 && (
                 <ol className="mt-1 text-[11px] text-zinc-500">
                   {m.segments.map((s, i) => (
@@ -37,7 +37,7 @@ export default function MeasurePanel() {
             </>
           ) : (
             <>
-              <div className="text-lg font-semibold">{fmtArea(m.value)}</div>
+              <div className="text-xl font-semibold tabular-nums tracking-tight">{fmtArea(m.value)}</div>
               <div className="text-[12px] text-zinc-600 dark:text-zinc-400">Périmètre : {fmtLength(m.perimeter || 0)}</div>
             </>
           )}

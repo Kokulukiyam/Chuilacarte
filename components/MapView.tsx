@@ -12,8 +12,33 @@ import { bufferedEmprise } from '@/lib/site';
 import { handleDrawFinish, handleMapClick, handleLiveChange, toolDrawMode } from '@/lib/tools';
 import { syncOverlays, overlaySubscribe } from '@/lib/overlays';
 import { startVertexEdit } from '@/lib/edit';
+import { zoomToSite } from '@/lib/mapview';
 
 let firstLabel: string | undefined;
+
+/** Bouton de carte : recadrer sur le site (emprise + zone tampon). */
+class FitSiteControl {
+  private el?: HTMLDivElement;
+  onAdd() {
+    const el = document.createElement('div');
+    el.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Recadrer sur le site');
+    b.setAttribute('data-tip', 'Recadrer sur le site');
+    b.setAttribute('data-key', '0');
+    b.setAttribute('data-testid', 'fit-site');
+    b.innerHTML =
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin:auto;display:block"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>';
+    b.onclick = () => zoomToSite();
+    el.appendChild(b);
+    this.el = el;
+    return el;
+  }
+  onRemove() {
+    this.el?.remove();
+  }
+}
 
 export default function MapView() {
   const el = useRef<HTMLDivElement>(null);
@@ -35,7 +60,18 @@ export default function MapView() {
     (window as any).__draw = () => mapRef.draw;
     installImageHandler(map);
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-    map.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 140 }), 'bottom-right');
+    map.addControl(new FitSiteControl(), 'top-right');
+    // attributions repliées au départ (bouton « i ») : elles ne masquent plus le bas de la carte
+    // (MapLibre les déplie dès que le fond a des sources : on attend donc le premier rendu complet)
+    const foldAttribution = () => {
+      if (!(map.getStyle()?.metadata as any)?.chuilacarte) return;
+      map.off('idle', foldAttribution);
+      const at = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
+      at?.classList.remove('maplibregl-compact-show');
+      at?.removeAttribute('open');
+    };
+    map.on('idle', foldAttribution);
+    map.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 140 }), 'bottom-left');
 
     if (!site.view) {
       const b = turf.bbox(bufferedEmprise(site)) as [number, number, number, number];

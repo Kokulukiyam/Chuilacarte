@@ -323,7 +323,7 @@ async function createSiteDialog(kind: 'search' | 'draw' | 'import', name: string
   const dlg = page.getByRole('dialog', { name: 'Nouveau site' });
   await dlg.waitFor();
   await sleep(1500); // carte de l'aperçu
-  const bufBtn = dlg.locator('button.tool-btn', { hasText: buffer === 0 ? 'Aucune' : buffer >= 1000 ? `${buffer / 1000} km` : `${buffer} m` });
+  const bufBtn = dlg.locator('button.chip', { hasText: buffer === 0 ? 'Aucune' : buffer >= 1000 ? `${buffer / 1000} km` : `${buffer} m` });
   if (await bufBtn.count()) await bufBtn.first().click();
   else await dlg.getByLabel('Distance du tampon (m)').fill(String(buffer));
   return dlg;
@@ -367,6 +367,28 @@ async function main() {
     if (r.status() >= 500 && u.startsWith(BASE)) issues.push({ step: currentStep, kind: 'requete', text: `${r.request().method()} ${u.slice(0, 200)} → HTTP ${r.status()}`, expected: expectErrors });
     else if (r.status() >= 400 && u.startsWith(BASE)) infos.push({ step: currentStep, kind: 'requete', text: `${r.request().method()} ${u.slice(0, 200)} → HTTP ${r.status()}` });
   });
+  // boîtes de dialogue de l'application (data-testid="dialog") : réponse prise dans dialogAnswers, comme pour les dialogues natifs
+  let answering = false;
+  setInterval(async () => {
+    if (answering || page.isClosed()) return;
+    answering = true;
+    try {
+      const dlg = page.getByTestId('dialog');
+      if (await dlg.count()) {
+        const a = dialogAnswers.shift();
+        infos.push({ step: currentStep, kind: 'dialogue', text: `« ${await dlg.getAttribute('aria-label')} » → ${a === undefined ? '(défaut)' : String(a)}` });
+        if (a === false) await dlg.getByTestId('dialog-cancel').click({ timeout: 2000 });
+        else {
+          if (typeof a === 'string') await dlg.getByTestId('dialog-input').fill(a, { timeout: 2000 });
+          await dlg.getByTestId('dialog-ok').click({ timeout: 2000 });
+        }
+      }
+    } catch {
+      /* dialogue déjà fermé */
+    } finally {
+      answering = false;
+    }
+  }, 150).unref();
   page.on('dialog', async (d) => {
     const a = dialogAnswers.shift();
     infos.push({ step: currentStep, kind: 'dialogue', text: `${d.type()} « ${d.message()} » → ${a === undefined ? '(défaut)' : String(a)}` });
@@ -510,7 +532,7 @@ async function main() {
     assert(dupSite.layers.length >= 3, 'la copie n’a pas ses couches');
     // supprimer (la copie)
     dialogAnswers.push(true);
-    await page.getByTestId('site-card').filter({ hasText: dup.name }).first().getByTitle('Supprimer').click();
+    await page.getByTestId('site-card').filter({ hasText: dup.name }).first().getByRole('button', { name: 'Supprimer' }).click();
     await waitFor(async () => !(await apiSites()).some((s) => s.slug === dup.slug), 'suppression de la copie', 10000);
     assert(!fs.existsSync(path.resolve(__dirname, '../../data/sites', dup.slug)), 'dossier de la copie toujours présent');
     created.delete(dup.slug);
@@ -1578,6 +1600,7 @@ async function main() {
 
   await step('8.5 Export vers QGIS (zip : .gpkg + .qgs)', async () => {
     if (await page.getByTestId('layout-close').count()) await page.getByTestId('layout-close').click();
+    await page.getByTestId('export-menu').click();
     const q = await download(() => page.getByTestId('export-qgis').click(), 180000);
     const z = await JSZip.loadAsync(q.buf);
     const names = Object.keys(z.files).filter((n) => !z.files[n].dir);
@@ -1617,7 +1640,7 @@ async function main() {
     await page.getByTestId('site-card').first().waitFor();
     if (sites.search) {
       dialogAnswers.push(true);
-      await page.getByTestId('site-card').filter({ hasText: 'E2E Recherche Médina' }).getByTitle('Supprimer').click();
+      await page.getByTestId('site-card').filter({ hasText: 'E2E Recherche Médina' }).getByRole('button', { name: 'Supprimer' }).click();
       await waitFor(async () => !(await apiSites()).some((s) => s.slug === sites.search), 'suppression par l’interface', 10000);
       created.delete(sites.search);
     }

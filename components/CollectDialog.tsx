@@ -1,4 +1,5 @@
 'use client';
+import { useEscape } from './ui/hooks';
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Loader2, X, XCircle, Download } from 'lucide-react';
 import { useStore } from '@/lib/store';
@@ -23,6 +24,7 @@ export default function CollectDialog({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<CollectReportItem[]>([]);
   const [done, setDone] = useState(false);
   const logEnd = useRef<HTMLDivElement>(null);
+  useEscape(() => !running && onClose());
 
   useEffect(() => {
     fetch('/api/collectors')
@@ -117,31 +119,52 @@ export default function CollectDialog({ onClose }: { onClose: () => void }) {
     totals.set(it.source, t);
   }
 
+  const nSel = list.filter((c) => sel[c.id]).length;
+  const nDone = Object.values(status).filter((v) => v !== 'run').length;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" role="dialog" aria-label="Collecter les données">
-      <div className="flex max-h-[90vh] w-[min(900px,96vw)] flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-zinc-900">
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Collecter les données" onMouseDown={(e) => e.target === e.currentTarget && !running && onClose()}>
+      <div className="modal flex max-h-[90vh] w-[min(920px,96vw)] flex-col">
         <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
-          <h2 className="font-semibold">Collecter les données du site</h2>
-          <button className="btn-ghost" onClick={onClose} disabled={running} aria-label="Fermer">
+          <div>
+            <h2 className="font-display text-[17px] font-bold leading-tight">Collecter les données du site</h2>
+            <p className="hint">Sur l’emprise du site et sa zone tampon. Une nouvelle collecte remplace les données, en gardant vos styles.</p>
+          </div>
+          <button className="icon-btn" onClick={onClose} disabled={running} aria-label="Fermer">
             <X size={16} />
           </button>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-2 gap-0 overflow-hidden">
-          <div className="overflow-y-auto border-r border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="mb-3 text-[12px] text-zinc-500">Emprise du site + zone tampon. Une nouvelle collecte remplace les données des couches collectées, en gardant leurs styles.</p>
-            <ul className="space-y-2">
+          <div className="overflow-y-auto border-r border-zinc-200 p-3 dark:border-zinc-800">
+            <div className="mb-1 flex items-center justify-between px-2">
+              <span className="section-title">
+                Sources · {nSel} sur {list.length}
+              </span>
+              <button className="btn-ghost py-0.5 text-[12px]" disabled={running || !list.length} onClick={() => setSel(Object.fromEntries(list.map((c) => [c.id, nSel < list.length])))}>
+                {nSel < list.length ? 'Tout cocher' : 'Tout décocher'}
+              </button>
+            </div>
+            {!list.length && (
+              <div className="space-y-3 p-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="skeleton h-9" />
+                ))}
+              </div>
+            )}
+            <ul>
               {list.map((c) => (
-                <li key={c.id} className="flex items-start gap-2">
-                  <input type="checkbox" className="mt-1" checked={!!sel[c.id]} disabled={running} onChange={(e) => setSel({ ...sel, [c.id]: e.target.checked })} data-testid={`collector-${c.id}`} />
-                  <div className="flex-1">
+                <li key={c.id}>
+                 <label className={`flex items-start gap-2.5 rounded-md px-2 py-1.5 ${running ? '' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800/60'}`}>
+                  <input type="checkbox" className="mt-0.5" checked={!!sel[c.id]} disabled={running} onChange={(e) => setSel({ ...sel, [c.id]: e.target.checked })} data-testid={`collector-${c.id}`} />
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 font-medium">
                       {c.label}
                       {status[c.id] === 'run' && <Loader2 size={13} className="animate-spin text-zinc-500" />}
                       {status[c.id] === 'ok' && <CheckCircle2 size={13} className="text-emerald-600" />}
                       {status[c.id] === 'err' && <XCircle size={13} className="text-red-600" />}
                     </div>
-                    <div className="text-[11px] text-zinc-500">{c.description}</div>
+                    <div className="hint">{c.description}</div>
                   </div>
+                 </label>
                 </li>
               ))}
             </ul>
@@ -186,19 +209,36 @@ export default function CollectDialog({ onClose }: { onClose: () => void }) {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center p-6 text-center text-zinc-500">
-                Choisissez les sources puis lancez la collecte.
-                <br />
-                Comptez de quelques secondes à quelques minutes selon la taille du site.
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-100 text-accent-700 dark:bg-accent-900/40 dark:text-accent-300">
+                  {running ? <Loader2 size={22} className="animate-spin" /> : <Download size={22} />}
+                </span>
+                {running ? (
+                  <p className="text-zinc-600 dark:text-zinc-300" aria-live="polite">{logs[logs.length - 1]?.message || 'Connexion aux sources…'}</p>
+                ) : (
+                  <p className="max-w-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                    Choisissez les sources puis lancez la collecte. Comptez de quelques secondes à quelques minutes selon la taille du site.
+                  </p>
+                )}
               </div>
             )}
-            <div className="flex justify-end gap-2 border-t border-zinc-200 p-3 dark:border-zinc-800">
+            <div className="flex items-center justify-end gap-2 border-t border-zinc-200 p-3 dark:border-zinc-800">
+              {running && (
+                <div className="mr-auto flex min-w-0 flex-1 items-center gap-2 pl-1" aria-label="Avancement de la collecte">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                    <div className="h-full rounded-full bg-accent-600 transition-all duration-500 dark:bg-accent-400" style={{ width: `${Math.max(4, (nDone / Math.max(1, nSel)) * 100)}%` }} />
+                  </div>
+                  <span className="hint shrink-0 tabular-nums">
+                    {nDone} / {nSel}
+                  </span>
+                </div>
+              )}
               {done && (
                 <button className="btn" onClick={onClose}>
                   Fermer
                 </button>
               )}
-              <button className="btn-primary" onClick={run} disabled={running || !list.some((c) => sel[c.id])} data-testid="collect-run">
+              <button className="btn-accent" onClick={run} disabled={running || !list.some((c) => sel[c.id])} data-testid="collect-run">
                 {running ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {running ? 'Collecte en cours…' : done ? 'Relancer' : 'Collecter'}
               </button>
             </div>

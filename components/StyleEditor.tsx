@@ -85,7 +85,7 @@ export default function StyleEditor({ layer }: { layer: Layer }) {
         <div className="section-title">Symbole</div>
         <div className="flex gap-1">
           {(['simple', 'categorized', 'graduated', ...(isPoint && layer.geom === 'point' ? (['heatmap'] as const) : [])] as const).map((m) => (
-            <button key={m} className={`tool-btn border border-zinc-200 px-2 text-[12px] dark:border-zinc-700 ${s.mode === m ? 'active' : ''}`} onClick={() => set((x) => (x.mode = m))} data-testid={`style-mode-${m}`}>
+            <button key={m} className={`chip ${s.mode === m ? 'active' : ''}`} onClick={() => set((x) => (x.mode = m))} data-testid={`style-mode-${m}`}>
               {m === 'simple' ? 'Simple' : m === 'categorized' ? 'Catégorisé' : m === 'graduated' ? 'Gradué' : 'Chaleur'}
             </button>
           ))}
@@ -93,7 +93,7 @@ export default function StyleEditor({ layer }: { layer: Layer }) {
         {(isPoly || isPoint) && (
           <div className="grid grid-cols-2 gap-2">
             {s.mode === 'simple' && <Color label="Remplissage" value={s.fill} onChange={(v) => set((x) => (x.fill = v))} testid="style-fill" />}
-            <label className="text-[12px]">
+            <label className="field">
               Opacité {Math.round(s.fillOpacity * 100)} %
               <input type="range" min={0} max={1} step={0.05} value={s.fillOpacity} onChange={(e) => set((x) => (x.fillOpacity = Number(e.target.value)))} className="w-full" />
             </label>
@@ -104,7 +104,7 @@ export default function StyleEditor({ layer }: { layer: Layer }) {
           <Num label="Épaisseur" value={s.strokeWidth} min={0} max={20} step={0.1} onChange={(v) => set((x) => (x.strokeWidth = v))} />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <label className="text-[12px]">
+          <label className="field">
             Type de trait
             <select className="input" value={s.dash} onChange={(e) => set((x) => (x.dash = e.target.value as any))}>
               <option value="solid">Continu</option>
@@ -112,14 +112,14 @@ export default function StyleEditor({ layer }: { layer: Layer }) {
               <option value="dot">Pointillés</option>
             </select>
           </label>
-          <label className="text-[12px]">
+          <label className="field">
             Opacité du trait
             <input type="range" min={0} max={1} step={0.05} value={s.strokeOpacity} onChange={(e) => set((x) => (x.strokeOpacity = Number(e.target.value)))} className="w-full" />
           </label>
         </div>
         {isPoly && (
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[12px]">
+            <label className="field">
               Hachures
               <select className="input" value={s.hatch} onChange={(e) => set((x) => (x.hatch = e.target.value as HatchKind))} data-testid="style-hatch">
                 <option value="none">Aucune</option>
@@ -136,7 +136,7 @@ export default function StyleEditor({ layer }: { layer: Layer }) {
         )}
         {isPoint && (
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[12px]">
+            <label className="field">
               Forme
               <select className="input" value={s.pointShape} onChange={(e) => set((x) => (x.pointShape = e.target.value as PointShape))} data-testid="style-shape">
                 <option value="circle">Cercle</option>
@@ -183,7 +183,7 @@ export default function StyleEditor({ layer }: { layer: Layer }) {
         {s.label && (
           <div className="grid grid-cols-2 gap-2">
             <Num label="Taille" value={s.label.size} min={6} max={48} step={0.5} onChange={(v) => set((x) => (x.label!.size = v))} />
-            <label className="text-[12px]">
+            <label className="field">
               Graisse
               <select className="input" value={s.label.weight} onChange={(e) => set((x) => (x.label!.weight = e.target.value as any))}>
                 <option value="regular">Normale</option>

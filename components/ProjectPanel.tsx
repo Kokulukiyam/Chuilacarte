@@ -170,7 +170,7 @@ function CalageSection({ layer }: { layer: Layer }) {
   return (
     <Section title="Caler le plan" icon={Target} testid="calage-section">
       <div className="flex flex-wrap gap-1">
-        <button className={`btn ${cal.moveMode ? 'ring-2 ring-orange-500' : ''}`} onClick={() => cal.set({ moveMode: !cal.moveMode })} data-testid="calage-move">
+        <button className={`btn ${cal.moveMode ? 'on' : ''}`} onClick={() => cal.set({ moveMode: !cal.moveMode })} data-testid="calage-move">
           <Move size={13} /> {cal.moveMode ? 'Terminer le déplacement' : 'Déplacer à la souris'}
         </button>
         <button
@@ -204,22 +204,22 @@ function CalageSection({ layer }: { layer: Layer }) {
           <RotateCcw size={13} />
         </button>
       </div>
-      <label className="block text-[12px]">
+      <label className="field">
         Rotation : {fmtNum(p.rotation, 1)}°
         <input type="range" min={-180} max={180} step={0.5} value={p.rotation} onChange={(e) => set((x) => (x.rotation = Number(e.target.value)), false)} onPointerUp={() => set(() => {})} className="w-full" data-testid="calage-rotation" />
       </label>
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-[12px]">
+        <label className="field">
           Rotation (°)
           <input type="number" className="input" step={0.1} value={Number(p.rotation.toFixed(2))} onChange={(e) => set((x) => (x.rotation = Number(e.target.value) || 0))} />
         </label>
-        <label className="text-[12px]">
+        <label className="field">
           {p.units === 'px' ? 'Échelle (m par pixel)' : 'Facteur d’échelle'}
           <input type="number" className="input" step={p.units === 'px' ? 0.001 : 0.01} min={0.0001} value={Number(p.scale.toPrecision(5))} onChange={(e) => Number(e.target.value) > 0 && set((x) => (x.scale = Number(e.target.value)))} data-testid="calage-scale" />
         </label>
       </div>
       {layer.kind === 'raster' && (
-        <label className="block text-[12px]">
+        <label className="field">
           Transparence : {Math.round((1 - layer.opacity) * 100)} %
           <input
             type="range"
@@ -299,11 +299,11 @@ function ProjectFigures({ layer }: { layer: Layer }) {
   return (
     <Section title="Programme et calculs" icon={Box} testid="project-figures">
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-[12px]">
+        <label className="field">
           Niveaux
           <input type="number" className="input" min={1} max={100} value={layer.project?.levels ?? 3} onChange={(e) => set((p) => (p.levels = Math.max(1, Number(e.target.value) || 1)))} data-testid="project-levels" />
         </label>
-        <label className="text-[12px]">
+        <label className="field">
           Hauteur d’étage (m)
           <input type="number" className="input" min={2} max={10} step={0.1} value={layer.project?.levelHeight ?? 3} onChange={(e) => set((p) => (p.levelHeight = Number(e.target.value) || 3))} />
         </label>
@@ -363,15 +363,15 @@ function View3dSection() {
   const setS = (fn: (s: any) => void) => useStore.getState().commit((d) => fn(d.site.settings));
   return (
     <Section title="Vue 3D" icon={Box} testid="view3d-section">
-      <button className={`btn ${mode3d ? 'ring-2 ring-blue-500' : ''}`} onClick={() => useStore.getState().setUi({ mode3d: !mode3d })} data-testid="toggle-3d">
+      <button className={`btn ${mode3d ? 'on' : ''}`} onClick={() => useStore.getState().setUi({ mode3d: !mode3d })} data-testid="toggle-3d">
         <Box size={13} /> {mode3d ? 'Revenir en 2D' : 'Passer en 3D'}
       </button>
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-[12px]">
+        <label className="field">
           Hauteur par défaut du bâti (m)
           <input type="number" className="input" min={1} max={100} step={0.5} value={settings.defaultHeight} onChange={(e) => setS((s) => (s.defaultHeight = Math.max(1, Number(e.target.value) || 6)))} data-testid="default-height" />
         </label>
-        <label className="text-[12px]">
+        <label className="field">
           Hauteur d’un niveau (m)
           <input type="number" className="input" min={2} max={10} step={0.1} value={settings.levelHeight} onChange={(e) => setS((s) => (s.levelHeight = Number(e.target.value) || 3))} />
         </label>
@@ -397,11 +397,11 @@ function ShadowSection() {
   return (
     <Section title="Ombres portées" icon={Sun} testid="shadow-section">
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-[12px]">
+        <label className="field">
           Date
           <input type="date" className="input" value={sh.date} onChange={(e) => (sh.set({ date: e.target.value }), setTimeout(run, 0))} data-testid="shadow-date" />
         </label>
-        <label className="text-[12px]">
+        <label className="field">
           Heure (Sénégal, UTC)
           <input type="time" className="input" value={sh.time} onChange={(e) => (sh.set({ time: e.target.value }), setTimeout(run, 0))} data-testid="shadow-time" />
         </label>

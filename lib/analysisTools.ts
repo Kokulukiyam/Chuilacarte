@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import * as turf from '@turf/turf';
 import type { Feature, LineString, MultiPolygon, Polygon } from 'geojson';
 import { nanoid } from 'nanoid';
+import { askText } from './dialogs';
 import { useStore } from './store';
 import { registerTool } from './tools';
 import { makeLayer, userSource, bufferedEmprise } from './site';
@@ -83,10 +84,10 @@ export function listZones(): ZoneDef[] {
 }
 
 registerTool('zone', {
-  finish(f) {
+  async finish(f) {
     const st = useStore.getState();
     const n = (st.data[zoneLayer()?.id || '']?.features.length || 0) + 1;
-    const nom = window.prompt('Nom de la zone d’analyse', `Zone ${n}`) || `Zone ${n}`;
+    const nom = (await askText('Nom de la zone d’analyse', { initial: `Zone ${n}`, okLabel: 'Créer la zone' })) || `Zone ${n}`;
     let zl = zoneLayer();
     const fid = nanoid(8);
     st.commit((d) => {

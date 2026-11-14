@@ -55,7 +55,7 @@ interface State {
   rightTab: 'couche' | 'analyse' | 'projet' | 'site';
   mode3d: boolean;
   layoutMode: boolean;
-  message: { text: string; kind: 'info' | 'error' | 'ok' } | null;
+  message: { text: string; kind: 'info' | 'error' | 'ok'; action?: { label: string; run: () => void } } | null;
   /** couche qui reçoit les objets dessinés (sinon : annotations) */
   drawTarget: string | null;
   // actions
@@ -71,7 +71,7 @@ interface State {
   redo(): void;
   markSaved(ok: boolean, err?: string): void;
   setUi(p: Partial<Pick<State, 'rightTab' | 'mode3d' | 'layoutMode'>>): void;
-  toast(text: string, kind?: 'info' | 'error' | 'ok'): void;
+  toast(text: string, kind?: 'info' | 'error' | 'ok', action?: { label: string; run: () => void }): void;
   setLayerData(id: string, fc: FC): void;
 }
 
@@ -185,12 +185,12 @@ export const useStore = create<State>((set, get) => ({
   setUi(p) {
     set(p as any);
   },
-  toast(text, kind = 'info') {
-    set({ message: { text, kind } });
+  toast(text, kind = 'info', action) {
+    set({ message: { text, kind, action } });
     const cur = get().message;
     setTimeout(() => {
       if (get().message === cur) set({ message: null });
-    }, kind === 'error' ? 8000 : 4000);
+    }, kind === 'error' ? 8000 : action ? 7000 : 4000);
   },
   setLayerData(id, fc) {
     set({ data: { ...get().data, [id]: ensureFids(fc) } });

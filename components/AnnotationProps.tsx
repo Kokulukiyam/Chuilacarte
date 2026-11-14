@@ -30,7 +30,7 @@ export default function AnnotationProps({ layer }: { layer: Layer }) {
         <div className="space-y-2 rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
           <div className="section-title">{ANN_LABELS[kind] || 'Annotation'}</div>
           {(kind === 'text' || kind === 'dimension') && (
-            <label className="block text-[12px]">
+            <label className="field">
               {kind === 'text' ? 'Texte' : 'Texte de la cote (vide = longueur mesurée)'}
               <textarea
                 key={sel!.fid}
@@ -44,11 +44,11 @@ export default function AnnotationProps({ layer }: { layer: Layer }) {
           )}
           {kind === 'marker' && (
             <div className="grid grid-cols-[70px_1fr] gap-2">
-              <label className="text-[12px]">
+              <label className="field">
                 N°
                 <input type="number" className="input" value={p._num} min={1} onChange={(e) => set({ _num: Number(e.target.value), numero: Number(e.target.value) })} />
               </label>
-              <label className="text-[12px]">
+              <label className="field">
                 Légende
                 <input key={sel!.fid} className="input" defaultValue={p._legend || ''} onBlur={(e) => set({ _legend: e.target.value, legende: e.target.value })} data-testid="ann-legend" />
               </label>
@@ -128,7 +128,8 @@ export function AnnotationBar() {
   const target = useStore((s) => s.drawTarget);
   if (!tool.startsWith('draw-') || target) return null;
   return (
-    <div className="absolute left-3 top-3 z-10 flex items-center gap-3 rounded-md border border-zinc-200 bg-white/95 px-3 py-1.5 text-[12px] shadow dark:border-zinc-700 dark:bg-zinc-900/95" data-testid="annotation-bar">
+    <div className="absolute left-3 top-3 z-10 flex items-center gap-3 rounded-lg border border-zinc-200 bg-white/95 px-3 py-1.5 text-[12px] shadow-pop backdrop-blur animate-pop dark:border-zinc-700 dark:bg-zinc-900/95" data-testid="annotation-bar">
+      <span className="section-title">Annotation</span>
       <label className="flex items-center gap-1">
         <input type="color" value={a.color} onChange={(e) => a.set({ color: e.target.value })} className="h-5 w-7" /> Couleur
       </label>
@@ -144,7 +145,6 @@ export function AnnotationBar() {
         <option value="regular">Normal</option>
         <option value="bold">Gras</option>
       </select>
-      <span className="text-zinc-500">Double-clic ou clic sur le dernier point pour terminer · Échap pour annuler</span>
     </div>
   );
 }

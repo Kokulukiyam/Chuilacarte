@@ -1,5 +1,7 @@
 'use client';
 import { useStore, type Tool } from './store';
+import { openUi } from './uiEvents';
+import { zoomToSite } from './mapview';
 
 export const TOOL_KEYS: Record<string, Tool> = {
   v: 'select',
@@ -27,6 +29,11 @@ export function onKey(fn: (e: KeyboardEvent) => boolean) {
 
 export function installShortcuts() {
   const h = (e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openUi('palette');
+      return;
+    }
     const t = e.target as HTMLElement;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
     for (const l of listeners) if (l(e)) return;
@@ -49,8 +56,17 @@ export function installShortcuts() {
       st.select(null);
       return;
     }
-    if (e.key === '3') {
-      st.setUi({ mode3d: !st.mode3d });
+    // e.code : sur un clavier AZERTY, les chiffres demandent Maj
+    if (e.key === '3' || e.code === 'Digit3') {
+      if (!st.layoutMode) st.setUi({ mode3d: !st.mode3d });
+      return;
+    }
+    if (e.key === '0' || e.code === 'Digit0') {
+      if (!st.layoutMode) zoomToSite();
+      return;
+    }
+    if (e.key === '?') {
+      openUi('shortcuts');
       return;
     }
     if ((e.key === 'Delete' || e.key === 'Backspace') && st.selection) {
