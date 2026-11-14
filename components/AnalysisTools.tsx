@@ -150,7 +150,7 @@ export function BufferSection() {
   return (
     <Section title="Zone tampon" icon={Circle} testid="buffer-section">
       {!layer ? (
-        <p className="text-[11px] text-zinc-500">Sélectionnez une couche (ou un objet) pour créer une zone tampon autour.</p>
+        <p className="hint">Sélectionnez une couche (ou un objet) pour créer une zone tampon autour.</p>
       ) : (
         <>
           <p className="text-[12px]">
@@ -198,7 +198,7 @@ export function IsochroneSection() {
       <button className={`btn ${tool === 'isochrone' ? 'on' : ''}`} onClick={() => useStore.getState().setTool('isochrone')} disabled={a.isoBusy} data-testid="iso-run">
         {a.isoBusy ? <Loader2 size={13} className="animate-spin" /> : <Footprints size={13} />} {tool === 'isochrone' ? 'Cliquez le point de départ sur la carte' : 'Choisir le point de départ'}
       </button>
-      <p className="text-[11px] text-zinc-500">{cfg.ors ? 'Calcul : OpenRouteService (clé fournie).' : 'Calcul : Valhalla (serveur public FOSSGIS, sans clé). Ajoutez ORS_API_KEY pour OpenRouteService.'}</p>
+      <p className="hint">{cfg.ors ? 'Calcul : OpenRouteService (clé fournie).' : 'Calcul : Valhalla (serveur public FOSSGIS, sans clé). Ajoutez ORS_API_KEY pour OpenRouteService.'}</p>
     </Section>
   );
 }
@@ -275,7 +275,7 @@ export function DensitySection() {
   return (
     <Section title="Carte de chaleur et densité" icon={Flame} testid="density-section">
       {!pts.length ? (
-        <p className="text-[11px] text-zinc-500">Aucune couche de points (collectez les équipements ou importez des points).</p>
+        <p className="hint">Aucune couche de points (collectez les équipements ou importez des points).</p>
       ) : (
         <>
           <select className="input" value={layer?.id} onChange={(e) => setLid(e.target.value)} data-testid="density-layer">

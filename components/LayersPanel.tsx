@@ -189,15 +189,14 @@ export default function LayersPanel() {
           )}
         </div>
       )}
-      <ul className="flex-1 overflow-y-auto pb-4 pt-0.5" role="listbox" aria-label="Couches du site">
+      <ul className="flex-1 overflow-y-auto pb-4 pt-0.5" aria-label="Couches du site">
         {shown.map(({ l, i }) => {
           const sel = selected === l.id;
           const empty = l.kind === 'vector' && l.count === 0;
           return (
             <li
               key={l.id}
-              role="option"
-              aria-selected={sel}
+              aria-current={sel || undefined}
               draggable={!filtering}
               onDragStart={(e) => {
                 setDrag(i);
@@ -233,12 +232,18 @@ export default function LayersPanel() {
               <GripVertical size={12} className={`shrink-0 text-zinc-300 dark:text-zinc-600 ${filtering ? 'invisible' : 'cursor-grab opacity-0 group-hover:opacity-100'}`} />
               <button
                 className={`flex h-6 w-5 shrink-0 items-center justify-center rounded ${l.visible ? 'text-zinc-600 dark:text-zinc-300' : 'text-zinc-300 dark:text-zinc-600'} hover:text-zinc-900 dark:hover:text-zinc-100`}
-                title={l.visible ? 'Masquer' : 'Afficher'}
+                title={`${l.visible ? 'Masquer' : 'Afficher'} (Alt + clic : seule cette couche)`}
                 aria-label={l.visible ? 'Masquer' : 'Afficher'}
                 data-testid="layer-visibility"
                 onClick={(e) => {
                   e.stopPropagation();
                   st().commit((d) => {
+                    if (e.altKey) {
+                      // Alt + clic : n'afficher que cette couche ; à nouveau : tout réafficher
+                      const solo = d.site.layers.every((y) => y.visible === (y.id === l.id));
+                      for (const y of d.site.layers) y.visible = solo ? true : y.id === l.id;
+                      return;
+                    }
                     const x = d.site.layers.find((y) => y.id === l.id)!;
                     x.visible = !x.visible;
                   });

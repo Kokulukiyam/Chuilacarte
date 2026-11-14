@@ -75,7 +75,7 @@ Le détail des sources, licences et attributions est dans [`SOURCES.md`](SOURCES
 ## 4. Guide rapide
 
 ### Écran d'accueil
-Liste des sites avec vignette ; **Renommer**, **Dupliquer**, **Supprimer** sous chaque carte ; **Nouveau site** en haut à droite ; bouton lune/soleil pour le mode sombre.
+Liste des sites avec vignette, **recherche** par nom et tri (récents ou par nom) ; crayon, copie et corbeille sous chaque carte pour **renommer**, **dupliquer**, **supprimer** (avec confirmation) ; **Nouveau site** en haut à droite ; bouton lune/soleil pour le mode sombre.
 
 ### Créer un site
 **Nouveau site**, puis au choix :
@@ -86,7 +86,13 @@ Liste des sites avec vignette ; **Renommer**, **Dupliquer**, **Supprimer** sous 
 Choisissez la **zone tampon** (100 m à 2 km, ou une valeur libre), nommez le site, puis **Créer le site**. La zone tampon se modifie ensuite dans l'onglet **Site**.
 
 ### L'espace de travail
-Carte au centre, couches à gauche, propriétés et analyses à droite (onglets **Couche**, **Analyse**, **Projet**, **Site**), outils en haut. La sauvegarde est automatique (« Enregistré » en haut). **Annuler / rétablir** : flèches ou Ctrl+Z / Ctrl+Maj+Z. Le bouton ⓘ affiche les raccourcis clavier.
+Carte au centre, couches à gauche, propriétés et analyses à droite (onglets **Couche**, **Analyse**, **Projet**, **Site**), outils en haut. La sauvegarde est automatique (« Enregistré » sous le nom du site). **Annuler / rétablir** : flèches ou Ctrl+Z / Ctrl+Maj+Z.
+
+- **Palette de commandes** (Ctrl+K ou ⌘K, ou la loupe) : tapez quelques lettres pour lancer un outil, une action, changer de fond ou retrouver une couche.
+- **Aide de l'outil actif** : une pastille en bas de la carte rappelle les gestes (« cliquez les sommets, double-clic pour fermer ») ; Échap quitte l'outil. Survoler un bouton affiche son nom et son raccourci ; la touche **?** (ou l'icône clavier) liste tous les raccourcis.
+- **Barre d'état** sous la carte : position du curseur (latitude/longitude et UTM du site), échelle approchée à l'écran, nombre d'objets sélectionnés ; les deux boutons aux extrémités replient les panneaux de gauche et de droite.
+- **Clic droit sur la carte** : copier les coordonnées (WGS84 ou UTM), zoomer ici, recadrer sur le site. Le bouton cadre (sous le zoom) et la touche **0** recadrent aussi sur le site.
+- **Glisser un fichier** sur la fenêtre l'importe comme couche.
 
 ### Collecter les données
 **Collecter les données** : cochez les sources et lancez. Chaque couche garde sa source, sa licence et sa date ; le résumé affiche le nombre d'objets par couche et la raison de chaque échec. Une nouvelle collecte met les données à jour en gardant vos styles.
@@ -97,9 +103,9 @@ Sources : OpenStreetMap (bâti, voirie hiérarchisée, voies ferrées, eau, occu
 Menu en haut à droite : vectoriel clair, couleur et sombre (OpenFreeMap), OSM standard, satellite haute résolution (avec clé ArcGIS), image Sentinel-2 du site, relief (ombrage et courbes), papier (fond uni sans étiquettes) et blanc. L'ombrage et les courbes peuvent aussi se superposer à n'importe quel fond.
 
 ### Couches
-- Œil : afficher/masquer ; glisser-déposer : ordre ; double-clic : zoomer sur la couche ; icône tableau : table attributaire ; corbeille : supprimer.
+- Œil : afficher/masquer (Alt + clic : n'afficher que cette couche) ; glisser-déposer : ordre ; double-clic : zoomer sur la couche ; icône tableau : table attributaire ; corbeille : supprimer (le message propose **Annuler**). En tête de panneau : loupe pour **chercher une couche**, œil pour ne lister que les couches affichées ; le bord droit du panneau se tire pour l'élargir.
 - **Onglet Couche** : nom, opacité, style prédéfini (bibliothèque : bâti gris foncé, plan masse noir, voirie hiérarchisée, eau, végétation, équipements par famille, limites, périmètre…), style **simple / catégorisé / gradué / chaleur**, couleurs, épaisseur, tirets, **hachures**, forme et taille des points, **étiquettes** (attribut, taille, graisse, couleur, halo), **filtre attributaire** (ex. `niveaux > 3`, `famille = santé`), libellé de légende.
-- **Table attributaire** : tri par colonne, recherche, modification directe des cellules ; un clic sur une ligne sélectionne l'objet et zoome dessus.
+- **Table attributaire** : tri par colonne, recherche, modification directe des cellules ; un clic sur une ligne sélectionne l'objet et zoome dessus ; **CSV** télécharge les lignes affichées ; le bord haut se tire pour changer la hauteur.
 - **Importer** : ajoute un fichier comme couche (GeoJSON, KML, GeoPackage, Shapefile zippé, CSV avec colonnes longitude/latitude, DXF géoréférencé, zip de dossier exporté de QGIS).
 - **Édition** (onglet Couche, objet sélectionné ; Maj + clic pour en sélectionner plusieurs) : modifier les sommets / déplacer à la souris, découper par une ligne, fusionner, séparer, rotation, mise à l'échelle, déplacement au mètre, dupliquer, supprimer (Suppr). « Ajouter un objet à cette couche » dessine directement dans la couche.
 
@@ -125,7 +131,9 @@ Outils de la barre du haut : point (P), ligne (L), polygone (G), rectangle (R), 
 ### Mise en page et exports
 **Mise en page** ouvre l'éditeur de planche : format (A4 à A0 ou personnalisé), orientation, **échelle exacte** (1/500 à 1/50 000 ou libre), rotation, fond (par défaut « Papier + noms de rues » : fond uni, mer en bleu pâle et noms des rues, pour que seules les couches du site soient dessinées), facteur d'épaisseurs et de symboles (adapté au format), police (Inter, IBM Plex Sans, Jost, Source Serif 4). Le sous-titre suit l'échelle (plan masse, plan de l'îlot, plan de quartier, plan de situation) tant qu'il n'est pas modifié. Les éléments (titre, sous-titre, légende générée et modifiable, barre d'échelle, flèche du nord, cartouche, encart de situation, texte libre, logo) se déplacent à la souris et se redimensionnent avec la poignée bleue ; glisser dans le cadre déplace la carte. **Exporter** : **PNG 300 dpi**, **PDF vectoriel**, **SVG** (Illustrator). Les attributions des sources sont toujours écrites sur la carte. **Enregistrer comme modèle** garde une disposition réutilisable sur d'autres sites.
 
-**Exporter** (barre du haut) : couches visibles en **GeoPackage** (UTM du site, styles QGIS inclus), **GeoJSON** (WGS84) ou **DXF** (mètres, UTM du site, pour AutoCAD). Le filtre attributaire de chaque couche est appliqué.
+Dans l'éditeur de planche, un élément sélectionné se déplace aussi aux **flèches** (1 mm ; Maj : 10 mm ; Alt : 0,1 mm) et se retire avec **Suppr** ; Ctrl + molette zoome l'aperçu. Les boutons d'export restent visibles en bas du panneau.
+
+**Exporter** (barre du haut) : couches visibles en **GeoPackage** (UTM du site, styles QGIS inclus), **GeoJSON** (WGS84) ou **DXF** (mètres, UTM du site, pour AutoCAD), et **Dossier QGIS** (toutes les couches + projet .qgs). Le filtre attributaire de chaque couche est appliqué.
 
 ## 5. Systèmes de coordonnées
 
@@ -135,7 +143,7 @@ Outils de la barre du haut : point (P), ligne (L), polygone (G), rectangle (R), 
 
 ## 6. Aller-retour avec QGIS
 
-**Vers QGIS** : bouton **QGIS** → un zip `<site>-qgis.zip`. Décompressez-le et ouvrez `<site>.qgs` (QGIS 3.22 ou plus récent). Il contient :
+**Vers QGIS** : menu **Exporter → Dossier QGIS** → un zip `<site>-qgis.zip`. Décompressez-le et ouvrez `<site>.qgs` (QGIS 3.22 ou plus récent). Il contient :
 - `<site>.gpkg` : toutes les couches vectorielles, en UTM du site, avec leurs styles (aussi enregistrés dans le GeoPackage : il s'ouvre stylé même seul) ; les couches mélangeant points, lignes et polygones (annotations) sont réparties en une table par type ;
 - le projet, avec les couches dans l'ordre de Chuilacarte, leurs styles (simple, catégorisé, gradué, chaleur, hachures, étiquettes), le fond de carte en couche XYZ et les images calées (`images/`) ;
 - `LISEZMOI.txt` avec les sources à citer.

@@ -240,7 +240,7 @@ function CalageSection({ layer }: { layer: Layer }) {
       )}
       <div className="rounded-md border border-zinc-200 p-2 dark:border-zinc-700">
         <div className="mb-1 text-[12px] font-medium">Calage par points (2 ou 3)</div>
-        <p className="text-[11px] text-zinc-500">
+        <p className="hint">
           {tool !== 'calage'
             ? 'Cliquez un point du plan, puis le point correspondant sur la carte. Répétez 2 ou 3 fois.'
             : cal.pending
@@ -350,7 +350,7 @@ function ProjectFigures({ layer }: { layer: Layer }) {
           </tbody>
         </table>
       ) : (
-        <p className="text-[11px] text-zinc-500">Pas encore de polygone dans ce projet.</p>
+        <p className="hint">Pas encore de polygone dans ce projet.</p>
       )}
       <p className="text-[10px] text-zinc-500">Un calque DXF nommé « PARCELLE » est pris comme parcelle et exclu de l’emprise bâtie.</p>
     </Section>
@@ -376,7 +376,7 @@ function View3dSection() {
           <input type="number" className="input" min={2} max={10} step={0.1} value={settings.levelHeight} onChange={(e) => setS((s) => (s.levelHeight = Number(e.target.value) || 3))} />
         </label>
       </div>
-      <p className="text-[11px] text-zinc-500">Bâti existant : hauteur ou niveaux quand ils sont connus, sinon la hauteur par défaut. Clic droit + glisser (ou Ctrl + glisser) pour incliner et tourner la vue.</p>
+      <p className="hint">Bâti existant : hauteur ou niveaux quand ils sont connus, sinon la hauteur par défaut. Clic droit + glisser (ou Ctrl + glisser) pour incliner et tourner la vue.</p>
     </Section>
   );
 }

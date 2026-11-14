@@ -80,3 +80,15 @@ Chaque ligne : un choix non précisé par la spécification, et la raison.
 - Zones d'analyse dessinées gardées dans une couche « Zones d'analyse » (réutilisables, exportables).
 - Build : ESLint ignoré pendant `next build` (le projet se vérifie par `tsc --noEmit`) et `outputFileTracingRoot` fixé au projet, pour ne pas dépendre d'une configuration ESLint ou d'un package-lock.json d'un dossier parent ; `scripts/test-server.sh` libère le port avec `lsof` sur macOS.
 - Carte : zoom par boîte (Maj + glisser) désactivé, Maj + clic servant à la sélection multiple ; styles OpenFreeMap nettoyés au chargement (cartouches de routes US retirés, comparaisons numériques protégées) ; erreurs réseau des services distants renvoyées en HTTP 503 avec un message clair.
+
+## Refonte de l'interface (14/11/2026)
+- **Palette** : neutres chauds (papier, encre) à la place du gris froid, et un seul accent, terre cuite, pour l'état actif (outil, onglet, couche sélectionnée, curseurs, cases). La sélection sur la carte reste bleue : elle doit se distinguer de l'emprise (rouge) et de l'accent. Les neutres sont posés en redéfinissant l'échelle `zinc` de Tailwind dans `@theme` : tous les composants existants en héritent sans être réécrits.
+- **Couches CSS** : les classes de composants (`.btn`, `.input`…) sont dans `@layer components`. Hors couche, elles l'emportaient sur les utilitaires de Tailwind 4, si bien que `input w-20` ou `btn hidden` étaient ignorés (champs pleine largeur par erreur).
+- **Dialogues** : `prompt`, `confirm` et `alert` du navigateur sont remplacés par `lib/dialogs.ts` (`askText`, `askConfirm`) et `components/ui/Dialogs.tsx`. Les outils Texte, Repère et Zone d'analyse attendent donc la réponse de façon asynchrone.
+- **Supprimer sans demander, mais annulable** : une couche ou une mise en page se supprime d'un clic et le message propose « Annuler ». La confirmation n'est gardée que pour la suppression d'un site, qui efface des fichiers et ne s'annule pas.
+- **Infobulles** : attribut `data-tip` (+ `data-key` pour le raccourci), affichées par `components/ui/Tooltips.tsx` hors des conteneurs qui rognent. Les `title` restent là où le test de bout en bout s'en sert.
+- **Export QGIS** rangé dans le menu « Exporter » (un bouton de moins dans la barre) ; même identifiant de test.
+- **Attributions** de la carte repliées derrière le bouton « i » à l'ouverture (elles couvraient le bas de la carte). Elles restent écrites en toutes lettres sur chaque planche exportée et dans l'onglet Site.
+- **Raccourcis** : pas de raccourci à base de crochets ou de chiffres seuls sans repli (`e.code`), parce qu'ils sont difficiles à taper sur un clavier AZERTY. Échap ne ferme pas la mise en page, il désélectionne seulement.
+- **Suppr en mise en page** ne touche plus jamais à un objet de la carte resté sélectionné : il retire l'élément de planche sélectionné, ou rien.
+- **Échelle de la barre d'état** : approchée (96 dpi, latitude du centre), annoncée comme telle. L'échelle exacte reste celle de la mise en page.

@@ -24,7 +24,9 @@ export const TOOL_KEYS: Record<string, Tool> = {
 const listeners = new Set<(e: KeyboardEvent) => boolean>();
 export function onKey(fn: (e: KeyboardEvent) => boolean) {
   listeners.add(fn);
-  return () => listeners.delete(fn);
+  return () => {
+    listeners.delete(fn);
+  };
 }
 
 export function installShortcuts() {

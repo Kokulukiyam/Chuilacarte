@@ -224,7 +224,7 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
                     </li>
                   ))}
                 </ul>
-                <p className="text-[11px] text-zinc-500">Géocodage : Nominatim / © les contributeurs d’OpenStreetMap.</p>
+                <p className="hint">Géocodage : Nominatim / © les contributeurs d’OpenStreetMap.</p>
               </>
             )}
             {tab === 'draw' && (
@@ -238,7 +238,7 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
                     <Hexagon size={14} /> Polygone
                   </button>
                 </div>
-                <p className="text-[11px] text-zinc-500">Rectangle : cliquez deux coins. Polygone : cliquez les sommets, puis cliquez le premier point pour fermer.</p>
+                <p className="hint">Rectangle : cliquez deux coins. Polygone : cliquez les sommets, puis cliquez le premier point pour fermer.</p>
               </div>
             )}
             {tab === 'import' && (
@@ -253,7 +253,7 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
                     data-testid="import-file"
                   />
                 </label>
-                <p className="text-[11px] text-zinc-500">GeoJSON, KML/KMZ, GeoPackage, Shapefile zippé, DXF géoréférencé (WGS84 ou UTM 28N), CSV.</p>
+                <p className="hint">GeoJSON, KML/KMZ, GeoPackage, Shapefile zippé, DXF géoréférencé (WGS84 ou UTM 28N), CSV.</p>
                 {imported && (
                   <>
                     <ul className="text-[12px]">
@@ -284,7 +284,11 @@ export default function NewSiteDialog({ onClose }: { onClose: () => void }) {
                     {b === 0 ? 'Aucune' : b >= 1000 ? `${b / 1000} km` : `${b} m`}
                   </button>
                 ))}
-                <input type="number" className="input h-7 w-20" value={buffer} min={0} max={20000} step={50} onChange={(e) => setBuffer(Math.max(0, Number(e.target.value) || 0))} aria-label="Distance du tampon (m)" />
+                <label className="flex items-center gap-1.5 text-[12px] text-zinc-500">
+                  ou
+                  <input type="number" className="input h-7 w-20" value={buffer} min={0} max={20000} step={50} onChange={(e) => setBuffer(Math.max(0, Number(e.target.value) || 0))} aria-label="Distance du tampon (m)" />
+                  m
+                </label>
               </div>
             </div>
             {area !== null && <p className="well text-[12px] text-zinc-700 dark:text-zinc-300">Surface de l’emprise : <b>{fmtArea(area)}</b></p>}

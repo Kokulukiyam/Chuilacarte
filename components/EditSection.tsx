@@ -27,10 +27,10 @@ export default function EditSection({ layer }: { layer: Layer }) {
         </button>
       )}
       {!has ? (
-        <p className="text-[11px] text-zinc-500">Cliquez un objet de cette couche sur la carte (Maj + clic pour en sélectionner plusieurs).</p>
+        <p className="hint">Cliquez un objet de cette couche sur la carte (Maj + clic pour en sélectionner plusieurs).</p>
       ) : (
         <>
-          <p className="text-[11px] text-zinc-500">{n} objet(s) sélectionné(s)</p>
+          <p className="hint">{n} objet(s) sélectionné(s)</p>
           <div className="flex flex-wrap gap-1">
             {tool === 'edit' ? (
               <button className="btn" onClick={() => (stopVertexEdit(), st().setTool('select'))} data-testid="edit-done">

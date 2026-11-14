@@ -885,7 +885,8 @@ async function main() {
     await page.getByTestId('redo').click();
     await sleep(200);
     const n2 = await n();
-    await page.locator('body').click({ position: { x: 900, y: 25 } }).catch(() => {});
+    // focus hors de tout champ : la barre d'état n'a rien de cliquable à cet endroit
+    await page.getByTestId('status-bar').click({ position: { x: 300, y: 10 } }).catch(() => {});
     await page.keyboard.press('Control+z');
     await sleep(200);
     const n3 = await n();

@@ -14,6 +14,7 @@ import { renderBasemap, type BasemapRender } from '@/lib/layout/basemap';
 import { fmtNum } from '@/lib/proj';
 import { exportLayout, fetchInset } from '@/lib/layout/export';
 import { flushNow } from '@/lib/autosave';
+import { onKey } from '@/lib/shortcuts';
 import type { Layout, LayoutElement } from '@/lib/types';
 import { buildLegend } from '@/lib/layout/legend';
 
@@ -64,6 +65,58 @@ export default function LayoutEditor() {
   const [drag, setDrag] = useState<{ el: string; handle?: string; x0: number; y0: number; orig: any; dx: number; dy: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const [wrapSize, setWrapSize] = useState({ w: 800, h: 600 });
+
+  // clavier : flèches = déplacer l'élément sélectionné (1 mm ; Maj 10 mm ; Alt 0,1 mm), Suppr = le retirer, Échap = désélectionner
+  const keyState = useRef({ sel, layoutId: layout?.id });
+  keyState.current = { sel, layoutId: layout?.id };
+  useEffect(
+    () =>
+      onKey((e) => {
+        const { sel: cur, layoutId: lid } = keyState.current;
+        if (!lid) return false;
+        const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          // jamais d'effacement d'un objet de la carte depuis la mise en page
+          if (cur && cur !== '__map') {
+            updateLayout(lid, (l) => void (l.elements = l.elements.filter((x) => x.id !== cur)));
+            setSel(null);
+            useStore.getState().toast('Élément retiré de la planche', 'info', { label: 'Annuler', run: () => useStore.getState().undo() });
+          }
+          return true;
+        }
+        if (e.key === 'Escape') {
+          setSel(null);
+          return true;
+        }
+        const d = arrows[e.key];
+        if (d && cur && cur !== '__map' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
+          updateLayout(lid, (l) => {
+            const it = l.elements.find((x) => x.id === cur);
+            if (!it) return;
+            it.x = Math.round((it.x + d[0] * step) * 10) / 10;
+            it.y = Math.round((it.y + d[1] * step) * 10) / 10;
+          });
+          return true;
+        }
+        return false;
+      }),
+    [],
+  );
+  // Ctrl/⌘ + molette : zoom de l'aperçu
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const h = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setZoom((z) => Math.max(0.25, Math.min(6, z * (e.deltaY < 0 ? 1.1 : 1 / 1.1))));
+    };
+    el.addEventListener('wheel', h, { passive: false });
+    return () => el.removeEventListener('wheel', h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!layout]);
 
   // création automatique d'une première mise en page
   useEffect(() => {
@@ -397,7 +450,8 @@ export default function LayoutEditor() {
             </ul>
           </div>
           {selEl && <ElementProps layout={layout} el={selEl} onDelete={() => (set((l) => void (l.elements = l.elements.filter((x) => x.id !== selEl.id))), setSel(null))} legendGroups={legendGroups} />}
-          {sel === '__map' && <p className="text-[11px] text-zinc-500">Glissez dans le cadre pour déplacer la carte ; poignée en bas à droite pour redimensionner le cadre.</p>}
+          {sel === '__map' && <p className="hint">Glissez dans le cadre pour déplacer la carte ; poignée en bas à droite pour redimensionner le cadre.</p>}
+          {!sel && <p className="hint">Cliquez un élément sur la planche pour le régler. Flèches : déplacer de 1 mm (Maj : 10 mm) · Suppr : retirer.</p>}
 
           <div className="space-y-1 border-t border-zinc-200 pt-3 dark:border-zinc-800">
             <div className="section-title">Modèles</div>

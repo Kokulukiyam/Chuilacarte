@@ -34,6 +34,15 @@ Défauts mineurs restants (voir le 7e passage et `RAPPORT.md`) : nom de l'aérop
 - SVG avec police incluse ; noms du fond agrandis selon le format.
 - Contrôle cartographique, passages 6 et 7 ; test de bout en bout 39/39.
 
+## Session locale (14/11/2026) : refonte de l'interface
+- Socle visuel : neutres chauds, accent terre cuite, contrôles de formulaire, infobulles avec raccourcis (`app/globals.css`, `components/ui/`). Choix détaillés dans DECISIONS.md.
+- Dialogues de l'application à la place de prompt/confirm/alert ; suppression de couche ou de planche annulable depuis le message.
+- Accueil : recherche, tri, cartes de site, état vide. Espace de travail : barre d'outils regroupée, palette de commandes (Ctrl/⌘ K), aide de l'outil actif, barre d'état (coordonnées, échelle approchée), clic droit sur la carte, recadrage sur le site, glisser-déposer de fichiers, panneaux repliables.
+- Couches : recherche, filtre « affichées », largeur réglable, Alt + clic pour isoler. Table attributaire : hauteur réglable, export CSV.
+- Mise en page : export toujours visible, flèches / Suppr / Ctrl + molette.
+- Vérifié : `tsc` vide, 35 tests unitaires, bout en bout 39/39 sans erreur console ni serveur.
+- Non fait : relecture visuelle des dernières captures (`npx tsx scripts/captures.ts`) après les ultimes retouches (mise en page au clavier, zone tampon du dialogue de création) ; RAPPORT.md pas encore mis à jour.
+
 ## Tests manuels rapides
 `scripts/test-server.sh 3400` puis ouvrir http://localhost:3400. Sites de test présents en local (non versionnés) : exemple-medina, exemple-yoff, exemple-fatick.
 
